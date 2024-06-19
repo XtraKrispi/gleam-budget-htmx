@@ -1,0 +1,20 @@
+{
+  "name": "budget_htmx",
+  "version": "1.0.0",
+  "description": "[![Package Version](https://img.shields.io/hexpm/v/budget_htmx)](https://hex.pm/packages/budget_htmx) [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/budget_htmx/)",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "tailwind:dev": "tailwindcss -i ./src/css/app.css -o ./priv/static/css/app.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.13",
+    "daisyui": "^4.12.2",
+    "tailwindcss": "^3.4.4"
+  }
+}

@@ -13,7 +13,18 @@ version = "1.0.0"
 # https://gleam.run/writing-gleam/gleam-toml/.
 
 [dependencies]
+gleam_erlang = ">= 0.25.0 and < 1.0.0"
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+lustre = ">= 4.2.6 and < 5.0.0"
+lustre_hx = ">= 0.1.13 and < 1.0.0"
+mist = ">= 1.2.0 and < 2.0.0"
+wisp = ">= 0.15.0 and < 1.0.0"
+radiate = ">= 0.4.0 and < 1.0.0"
+based = ">= 3.0.1 and < 4.0.0"
+gleam_http = ">= 3.6.0 and < 4.0.0"
+gluid = ">= 1.0.0 and < 2.0.0"
+birl = ">= 1.7.1 and < 2.0.0"
+based_sqlite = ">= 3.0.0 and < 4.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
