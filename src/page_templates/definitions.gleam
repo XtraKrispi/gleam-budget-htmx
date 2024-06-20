@@ -44,24 +44,32 @@ pub fn full_page() {
 }
 
 pub fn definitions_table(definitions: List(Definition)) {
-  html.div([attribute.id("definitions")], [
-    case list.is_empty(definitions) {
-      True -> html.p([], [html.text("No definitions found")])
-      False ->
-        html.table([attribute.class("table table-zebra")], [
-          html.thead([], [
-            html.tr([], [
-              html.th([], [html.text("Description")]),
-              html.th([], [html.text("Amount")]),
-              html.th([], [html.text("Frequency")]),
-              html.th([], [html.text("Start Date")]),
-              html.th([], [html.text("End Date")]),
+  html.main(
+    [
+      attribute.id("definitions"),
+      hx.get("/admin/definitions"),
+      hx.swap(OuterHTML, None),
+      hx.trigger([Event("reload", [hx.From(hx.CssSelector("body"))])]),
+    ],
+    [
+      case list.is_empty(definitions) {
+        True -> html.p([], [html.text("No definitions found")])
+        False ->
+          html.table([attribute.class("table table-zebra")], [
+            html.thead([], [
+              html.tr([], [
+                html.th([], [html.text("Description")]),
+                html.th([], [html.text("Amount")]),
+                html.th([], [html.text("Frequency")]),
+                html.th([], [html.text("Start Date")]),
+                html.th([], [html.text("End Date")]),
+              ]),
             ]),
-          ]),
-          html.tbody([], list.map(definitions, render_definition_row)),
-        ])
-    },
-  ])
+            html.tbody([], list.map(definitions, render_definition_row)),
+          ])
+      },
+    ],
+  )
 }
 
 fn render_definition_row(definition: Definition) {

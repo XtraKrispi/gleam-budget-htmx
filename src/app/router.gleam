@@ -96,7 +96,7 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
           case db.upsert_definition(definition, db) {
             Ok(_) ->
               wisp.no_content()
-              |> wisp.set_header("HX-Trigger", "hideDefinitionsModal")
+              |> wisp.set_header("HX-Trigger", "hideDefinitionsModal, reload")
             Error(_) -> wisp.internal_server_error()
           }
         Error(_) -> wisp.internal_server_error()

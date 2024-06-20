@@ -1,5 +1,4 @@
 import birl.{type Day}
-import gleam/float
 import gleam/int
 import gleam/option.{type Option}
 import gleam/string
@@ -28,9 +27,6 @@ fn split_thousands(data: Int, separator: String, accum: StringBuilder) {
 
 type Opt {
   Decimals(Int)
-  Compact
-  Scientific(Int)
-  Short
 }
 
 @external(erlang, "erlang", "float_to_binary")
