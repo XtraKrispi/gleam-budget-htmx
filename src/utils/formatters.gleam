@@ -26,31 +26,25 @@ fn split_thousands(data: Int, separator: String, accum: StringBuilder) {
   }
 }
 
-pub fn float_to_string(data: Float, decimal_places: Int) {
-  let assert Ok(#(before, after)) =
-    data |> float.to_string |> string.split_once(".")
-
-  before
-  <> case decimal_places == 0 {
-    True -> ""
-    False -> "." <> string.pad_right(after, decimal_places, "0")
-  }
+type Opt {
+  Decimals(Int)
+  Compact
+  Scientific(Int)
+  Short
 }
+
+@external(erlang, "erlang", "float_to_binary")
+fn float_to_binary(float: Float, options: List(Opt)) -> String
 
 pub fn format_float(
   data: Float,
   decimal_places: Int,
   thousands_separator: Option(String),
 ) {
-  let assert Ok(factor) = int.power(10, int.to_float(decimal_places))
-  let rounded =
-    data *. factor
-    |> float.round
-    |> int.to_float
-    |> fn(f) { f /. factor }
-
   let assert Ok(#(before_decimal, after_decimal)) =
-    rounded |> float.to_string |> string.split_once(".")
+    data
+    |> float_to_binary([Decimals(decimal_places)])
+    |> string.split_once(".")
 
   let assert Ok(before_int) = int.parse(before_decimal)
   thousands_separator

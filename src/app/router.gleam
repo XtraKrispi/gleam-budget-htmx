@@ -4,7 +4,6 @@ import based.{type DB}
 import birl
 import db/definitions as db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -56,7 +55,6 @@ fn definitions(req: Request, database: DB) -> Response {
           |> to_response(200)
         }
         Error(e) -> {
-          io.debug(e)
           wisp.internal_server_error()
         }
       }

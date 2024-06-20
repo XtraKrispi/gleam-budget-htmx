@@ -1,4 +1,3 @@
-import gleam/float
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute
@@ -136,7 +135,7 @@ pub fn render_definition_modal(definition: Definition) {
           ]),
           html.input([
             attribute.class("input input-bordered w-full max-w-xs"),
-            attribute.value(amt |> formatters.float_to_string(2)),
+            attribute.value(amt |> formatters.format_float(2, None)),
             attribute.placeholder("Amount"),
             attribute.name("amount"),
             attribute.required(True),
