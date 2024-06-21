@@ -1,3 +1,4 @@
+import gleam/option.{None}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
@@ -84,4 +85,40 @@ pub fn with_layout(content: Element(t)) -> List(Element(t)) {
     ]),
   ])
   |> list.singleton
+}
+
+pub type AlertType {
+  Info
+  Success
+  Warning
+  Error
+}
+
+pub fn add_toast(content: Element(t), alert_type: AlertType) -> Element(t) {
+  html.div(
+    [
+      attribute.attribute("hx-swap-oob", "beforeend"),
+      attribute.id("toast-container"),
+    ],
+    [
+      html.div(
+        [
+          hx.get("/toast/clear"),
+          hx.swap(hx.OuterHTML, None),
+          hx.trigger([hx.Event("load", [hx.Delay(hx.Seconds(3))])]),
+          attribute.class("alert"),
+          attribute.classes([
+            #("alert-info", alert_type == Info),
+            #("alert-success", alert_type == Success),
+            #("alert-warning", alert_type == Warning),
+            #("alert-error", alert_type == Error),
+          ]),
+        ],
+        [content],
+      ),
+    ],
+  )
+  // <div class="alert alert-info">
+  //   <span>New mail arrived.</span>
+  // </div>
 }

@@ -14,7 +14,6 @@ import gleam/string
 import gleam/string_builder
 import htmx/request
 import logic/items
-import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 import page_templates/archive as archive_page
@@ -46,6 +45,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
     ["archive"] -> archive_page()
     ["archive", "skip"] -> archive(req, ctx.db, Skipped)
     ["archive", "pay"] -> archive(req, ctx.db, Paid)
+    ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
     _ -> wisp.not_found()
   }
 }
