@@ -11,7 +11,7 @@ import utils/formatters
 
 pub fn get_all(db: DB) -> Result(List(ArchivedItem), Error) {
   "SELECT identifier
-        , item_identifier
+        , item_definition_identifier
         , description
         , amount
         , date
@@ -26,7 +26,7 @@ pub fn get_all(db: DB) -> Result(List(ArchivedItem), Error) {
 
 pub fn insert(item: ArchivedItem, db: DB) -> Result(Nil, Error) {
   "INSERT INTO archive(identifier
-        , item_identifier
+        , item_definition_identifier
         , description
         , amount
         , date
@@ -36,7 +36,7 @@ pub fn insert(item: ArchivedItem, db: DB) -> Result(Nil, Error) {
   |> based.new_query
   |> based.with_values([
     based.string(id.unwrap(item.id)),
-    based.string(id.unwrap(item.item_id)),
+    based.string(id.unwrap(item.item_definition_id)),
     based.string(item.description),
     based.float(item.amount),
     based.string(formatters.format_date(item.date)),

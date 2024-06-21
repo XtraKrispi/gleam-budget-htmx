@@ -6,7 +6,6 @@ import gleam/option.{type Option, None, Some}
 import gleam/order.{Eq, Lt}
 import gleam/string
 import types/definition.{type Definition}
-import types/id
 import types/item.{type Item, Item}
 
 fn compare_dates(day1: Day, day2: Day) -> order.Order {
@@ -37,16 +36,16 @@ fn get_items_from_definition(def: Definition) -> Iterator(Item) {
   case def.frequency {
     definition.OneTime ->
       iterator.once(fn() {
-        Item(id.new_id(), def.description, def.amount, def.start_date)
+        Item(def.id, def.description, def.amount, def.start_date)
       })
     definition.BiWeekly ->
       iterator.unfold(
-        Item(id.new_id(), def.description, def.amount, def.start_date),
+        Item(def.id, def.description, def.amount, def.start_date),
         iterate_item(_, duration.days(14), def.end_date),
       )
     definition.Monthly ->
       iterator.unfold(
-        Item(id.new_id(), def.description, def.amount, def.start_date),
+        Item(def.id, def.description, def.amount, def.start_date),
         iterate_item(_, duration.months(1), def.end_date),
       )
   }

@@ -1,8 +1,10 @@
-import birl.{type Day}
+import birl.{type Day, Day}
 import gleam/dynamic.{type DecodeErrors, type Decoder, type Dynamic, DecodeError}
 import gleam/float
 import gleam/int
+import gleam/list
 import gleam/result
+import gleam/string
 
 pub fn map(decoder: Decoder(a), f: fn(a) -> b) -> Decoder(b) {
   fn(dyn) {
@@ -24,8 +26,11 @@ pub fn try(decoder: Decoder(a), f: fn(a) -> Decoder(b)) -> Decoder(b) {
 }
 
 pub fn parse_day(val: String) -> Result(Day, Nil) {
-  birl.parse(val)
-  |> result.map(birl.get_day)
+  let split = string.split(val, "-") |> list.map(int.parse) |> result.all
+  case split {
+    Ok([y, m, d]) -> Ok(Day(y, m, d))
+    _ -> Error(Nil)
+  }
 }
 
 pub fn day_decoder(dyn: Dynamic) -> Result(Day, DecodeErrors) {
@@ -33,7 +38,7 @@ pub fn day_decoder(dyn: Dynamic) -> Result(Day, DecodeErrors) {
   use f <- result.try(
     parse_day(f_str)
     |> result.map_error(fn(_) {
-      [DecodeError(expected: "frequency", found: f_str, path: ["frequency"])]
+      [DecodeError(expected: "day", found: f_str, path: ["day"])]
     }),
   )
   Ok(f)

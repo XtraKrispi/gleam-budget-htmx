@@ -1,12 +1,12 @@
 import birl.{type Day}
 import gleam/dynamic.{type DecodeErrors, type Dynamic, DecodeError}
+import types/definition.{type Definition}
 import types/id.{type Id}
-import types/item.{type Item}
 
 pub type ArchivedItem {
   ArchivedItem(
     id: Id(ArchivedItem),
-    item_id: Id(Item),
+    item_definition_id: Id(Definition),
     description: String,
     amount: Float,
     date: Day,
