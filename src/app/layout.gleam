@@ -3,8 +3,9 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/svg
 import lustre_hx as hx
+import utils/list
 
-pub fn with_layout(content: Element(t)) -> Element(t) {
+pub fn with_layout(content: Element(t)) -> List(Element(t)) {
   let menu_items = [
     html.li([], [html.a([attribute.href("/")], [html.text("Home")])]),
     html.li([], [
@@ -26,6 +27,13 @@ pub fn with_layout(content: Element(t)) -> Element(t) {
       ),
     ]),
     html.body([attribute.class("w-screen")], [
+      html.div(
+        [
+          attribute.class("toast toast-top toast-end"),
+          attribute.id("toast-container"),
+        ],
+        [],
+      ),
       html.div([attribute.class("navbar bg-base-100"), hx.boost(True)], [
         html.div([attribute.class("navbar-start")], [
           html.div([attribute.class("dropdown")], [
@@ -75,4 +83,5 @@ pub fn with_layout(content: Element(t)) -> Element(t) {
       content,
     ]),
   ])
+  |> list.singleton
 }

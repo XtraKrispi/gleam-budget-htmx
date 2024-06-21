@@ -11,9 +11,12 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/string_builder
 import htmx/request
 import logic/items
+import lustre/attribute
 import lustre/element.{type Element}
+import lustre/element/html
 import page_templates/archive as archive_page
 import page_templates/definitions
 import page_templates/home
@@ -22,11 +25,13 @@ import types/definition.{type Definition, Definition, OneTime}
 import types/id.{type Id}
 import types/item.{type Item, Item}
 import utils/decoders
+import utils/list as my_list
 import wisp.{type Request, type Response}
 
-fn to_response(elem: Element(t), status_code: Int) -> Response {
-  elem
-  |> element.to_document_string_builder
+fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
+  elems
+  |> list.map(element.to_document_string_builder)
+  |> string_builder.concat
   |> wisp.html_response(status_code)
 }
 
@@ -64,6 +69,7 @@ fn definitions_page(req: Request, database: DB) -> Response {
         Ok(defs) -> {
           defs
           |> definitions.definitions_table
+          |> my_list.singleton
           |> to_response(200)
         }
         Error(_e) -> {
@@ -102,6 +108,7 @@ pub fn items(req: Request, db: DB) -> Response {
           })
         })
       home.items(items)
+      |> my_list.singleton
       |> to_response(200)
     }
     _, _ -> wisp.internal_server_error()
@@ -130,6 +137,7 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
       case definition {
         Ok(def) ->
           definitions.render_definition_modal(def)
+          |> my_list.singleton
           |> to_response(200)
           |> wisp.set_header("HX-Trigger-After-Settle", "showDefinitionsModal")
         Error(_) ->
@@ -159,7 +167,7 @@ pub fn archive(req, db, action) {
   case hydrate_item(form_data) {
     Ok(item) -> {
       case item |> convert_to_archive(action) |> archive_db.insert(db) {
-        Ok(_) -> wisp.no_content()
+        Ok(_) -> wisp.no_content() |> wisp.set_header("HX-Trigger", "reload")
         Error(err) -> {
           io.debug(err)
           wisp.internal_server_error()

@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import lustre/attribute
 import lustre/element/html
 import lustre_hx.{Event} as hx
@@ -11,14 +11,27 @@ pub fn full_page() {
     html.header([attribute.class("prose lg:prose-xl flex space-x-4")], [
       html.h2([], [html.text("Home")]),
     ]),
-    html.main([hx.trigger([Event("load", [])]), hx.get("/items")], [
-      html.text("Loading"),
-    ]),
+    html.main(
+      [
+        hx.trigger([Event("load", [])]),
+        hx.get("/items"),
+        hx.swap(hx.OuterHTML, None),
+      ],
+      [html.text("Loading")],
+    ),
   ])
 }
 
 pub fn items(items: List(Item)) {
-  html.div([], items |> list.map(render_item))
+  html.main(
+    [
+      attribute.class("flex flex-col space-y-4"),
+      hx.trigger([Event("reload from:body", [])]),
+      hx.get("/items"),
+      hx.swap(hx.OuterHTML, None),
+    ],
+    items |> list.map(render_item),
+  )
 }
 
 fn render_item(item: Item) {
