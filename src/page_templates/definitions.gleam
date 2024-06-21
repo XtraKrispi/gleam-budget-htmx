@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute
 import lustre/element/html
+import lustre/element/svg
 import lustre_hx.{CssSelector, Event, OuterHTML} as hx
 import types/definition.{type Definition, Definition}
 import types/id
@@ -26,7 +27,30 @@ pub fn full_page() {
             hx.target(CssSelector("#definition_modal")),
             hx.swap(OuterHTML, None),
           ],
-          [html.text("New")],
+          // <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+          //   <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+          // </svg>
+
+          [
+            html.text("New"),
+            html.svg(
+              [
+                attribute.class("h-6 w-6"),
+                attribute.attribute("fill", "none"),
+                attribute.attribute("viewBox", "0 0 24 24"),
+                attribute.attribute("stroke-width", "1.5"),
+                attribute.attribute("stroke", "currentColor"),
+              ],
+              [
+                svg.path([
+                  attribute.attribute("stroke-linecap", "round"),
+                  attribute.attribute("stroke-linejoin", "round"),
+                  attribute.attribute("d", "M5 12h14m-7 7V5"),
+                  attribute.attribute("stroke-width", "2"),
+                ]),
+              ],
+            ),
+          ],
         ),
       ]),
       html.main(
@@ -114,12 +138,28 @@ pub fn render_definition_modal(definition: Definition) {
               "btn btn-sm btn-circle btn-ghost absolute right-2 top-2",
             ),
           ],
-          [html.text("✕")],
+          [
+            html.svg(
+              [
+                attribute.class("h-6 w-6"),
+                attribute.attribute("fill", "none"),
+                attribute.attribute("viewBox", "0 0 24 24"),
+              ],
+              [
+                svg.path([
+                  attribute.attribute("stroke", "currentColor"),
+                  attribute.attribute("stroke-linecap", "round"),
+                  attribute.attribute("stroke-linejoin", "round"),
+                  attribute.attribute("stroke-width", "2"),
+                  attribute.attribute("d", "M6 18 17.94 6M18 18 6.06 6"),
+                ]),
+              ],
+            ),
+          ],
         ),
       ]),
-      html.h3([attribute.class("font-bold text-lg")], [html.text("Hello!")]),
-      html.p([attribute.class("py-4")], [
-        html.text("Press ESC key or click on ✕ button to close"),
+      html.h3([attribute.class("font-bold text-lg")], [
+        html.text("Edit Definition"),
       ]),
       html.form(
         [
@@ -182,7 +222,28 @@ pub fn render_definition_modal(definition: Definition) {
           html.div([attribute.class("modal-action")], [
             html.button(
               [attribute.class("btn btn-primary"), attribute.type_("submit")],
-              [html.text("Save")],
+              [
+                html.text("Save"),
+                html.svg(
+                  [
+                    attribute.class("h-6 w-6"),
+                    attribute.attribute("fill", "none"),
+                    attribute.attribute("viewBox", "0 0 24 24"),
+                  ],
+                  [
+                    svg.path([
+                      attribute.attribute("stroke", "currentColor"),
+                      attribute.attribute("stroke-linecap", "round"),
+                      attribute.attribute("stroke-linejoin", "round"),
+                      attribute.attribute("stroke-width", "2"),
+                      attribute.attribute(
+                        "d",
+                        "M11 16h2m6.707-9.293-2.414-2.414A1 1 0 0 0 16.586 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7.414a1 1 0 0 0-.293-.707ZM16 20v-6a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v6h8ZM9 4h6v3a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V4Z",
+                      ),
+                    ]),
+                  ],
+                ),
+              ],
             ),
           ]),
         ],

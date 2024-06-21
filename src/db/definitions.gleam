@@ -6,6 +6,7 @@ import gleam/result
 import types/definition.{type Definition, Definition}
 import types/error.{type Error, DbError, NotFoundError}
 import types/id.{type Id}
+import utils/decoders
 import utils/formatters
 
 pub fn get_all(db: DB) -> Result(List(Definition), Error) {
@@ -86,7 +87,7 @@ fn definition_decoder(dyn: Dynamic) -> Result(Definition, DecodeErrors) {
     dynamic.element(1, dynamic.string),
     dynamic.element(2, dynamic.float),
     dynamic.element(3, definition.frequency_decoder),
-    dynamic.element(4, definition.day_decoder),
-    dynamic.element(5, dynamic.optional(definition.day_decoder)),
+    dynamic.element(4, decoders.day_decoder),
+    dynamic.element(5, dynamic.optional(decoders.day_decoder)),
   )(dyn)
 }
