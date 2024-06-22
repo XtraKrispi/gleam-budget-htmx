@@ -6,7 +6,6 @@ import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -73,7 +72,9 @@ fn definitions_page(req: Request, database: DB) -> Response {
           |> to_response(200)
         }
         Error(_e) -> {
-          wisp.internal_server_error()
+          error_toast(
+            "There was an issue fetching definitions, please refresh the page and try again.",
+          )
         }
       }
     }
@@ -111,7 +112,10 @@ pub fn items(req: Request, db: DB) -> Response {
       |> my_list.singleton
       |> to_response(200)
     }
-    _, _ -> wisp.internal_server_error()
+    _, _ ->
+      error_toast(
+        "There was an issue fetching items, please refresh and try again.",
+      )
   }
 }
 
@@ -141,7 +145,9 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
           |> to_response(200)
           |> wisp.set_header("HX-Trigger-After-Settle", "showDefinitionsModal")
         Error(_) ->
-          todo as "Need to return something indicating something went wrong... a toast?"
+          error_toast(
+            "There was an issue fetching the definition.  Please try again.",
+          )
       }
     }
     Post -> {
@@ -152,12 +158,15 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
             Ok(_) ->
               wisp.no_content()
               |> wisp.set_header("HX-Trigger", "hideDefinitionsModal, reload")
-            Error(_) -> wisp.internal_server_error()
+            Error(_) ->
+              error_toast(
+                "There was an issue saving the definition, please try again.",
+              )
           }
-        Error(_) -> wisp.internal_server_error()
+        Error(_) -> error_toast("Bad request, please check your formatting.")
       }
     }
-    _ -> wisp.not_found()
+    _ -> error_toast("Something went wrong, please try again.")
   }
 }
 
@@ -168,17 +177,19 @@ pub fn archive(req, db, action) {
     Ok(item) -> {
       case item |> convert_to_archive(action) |> archive_db.insert(db) {
         Ok(_) -> wisp.no_content() |> wisp.set_header("HX-Trigger", "reload")
-        Error(err) -> {
-          io.debug(err)
-          wisp.internal_server_error()
-        }
+        Error(_err) ->
+          error_toast("Could not move to the archive, please try again.")
       }
     }
-    Error(err) -> {
-      io.debug(err)
-      wisp.internal_server_error()
-    }
+    Error(_err) -> error_toast("Bad request, please check your formatting.")
   }
+}
+
+fn error_toast(msg) {
+  layout.add_toast(html.span([], [html.text(msg)]), layout.Error)
+  |> my_list.singleton
+  |> to_response(200)
+  |> wisp.set_header("HX-Reswap", "none")
 }
 
 fn hydrate_definition(form: wisp.FormData) {

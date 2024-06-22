@@ -2936,6 +2936,14 @@ html {
   z-index: 1;
 }
 
+.z-10 {
+  z-index: 10;
+}
+
+.z-\[1000\] {
+  z-index: 1000;
+}
+
 .mt-3 {
   margin-top: 0.75rem;
 }

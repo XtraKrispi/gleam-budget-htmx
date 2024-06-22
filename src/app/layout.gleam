@@ -30,7 +30,7 @@ pub fn with_layout(content: Element(t)) -> List(Element(t)) {
     html.body([attribute.class("w-screen")], [
       html.div(
         [
-          attribute.class("toast toast-top toast-end"),
+          attribute.class("toast toast-top toast-end z-[1000]"),
           attribute.id("toast-container"),
         ],
         [],
@@ -118,7 +118,4 @@ pub fn add_toast(content: Element(t), alert_type: AlertType) -> Element(t) {
       ),
     ],
   )
-  // <div class="alert alert-info">
-  //   <span>New mail arrived.</span>
-  // </div>
 }
