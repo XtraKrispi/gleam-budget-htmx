@@ -65,10 +65,10 @@ fn iterate_item(
   case end_date {
     Some(d) ->
       case compare_dates(new_item.date, d) {
-        Lt | Eq -> Next(new_item, new_item)
+        Lt | Eq -> Next(item, new_item)
         _ -> Done
       }
-    None -> Next(new_item, new_item)
+    None -> Next(item, new_item)
   }
 }
 
