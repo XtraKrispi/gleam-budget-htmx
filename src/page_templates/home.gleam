@@ -62,14 +62,25 @@ fn render_item(item: Item) {
           ]),
         ]),
         html.p([], [html.text(formatters.format_date(item.date))]),
-        html.div([attribute.class("card-actions justify-end")], [
-          html.button([attribute.class("btn"), hx.post("/archive/skip")], [
-            html.text("Skip"),
+        html.div([attribute.class("flex justify-between items-center")], [
+          html.div([], [
+            case item.is_automatic_withdrawal {
+              True ->
+                html.div([attribute.class("badge badge-primary")], [
+                  html.text("Automatic"),
+                ])
+              False -> html.text("")
+            },
           ]),
-          html.button(
-            [attribute.class("btn btn-primary"), hx.post("/archive/pay")],
-            [html.text("Pay")],
-          ),
+          html.div([attribute.class("card-actions justify-end")], [
+            html.button([attribute.class("btn"), hx.post("/archive/skip")], [
+              html.text("Skip"),
+            ]),
+            html.button(
+              [attribute.class("btn btn-primary"), hx.post("/archive/pay")],
+              [html.text("Pay")],
+            ),
+          ]),
         ]),
       ]),
     ],

@@ -6,7 +6,6 @@ import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
