@@ -1,3 +1,4 @@
+import birl.{type Day}
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute
@@ -11,23 +12,33 @@ pub fn full_page() {
     html.header([attribute.class("prose lg:prose-xl flex space-x-4")], [
       html.h2([], [html.text("Home")]),
     ]),
-    html.main(
+    html.div(
       [
         hx.trigger([Event("load", [])]),
-        hx.get("/items"),
+        hx.get("/"),
         hx.swap(hx.OuterHTML, None),
       ],
-      [html.text("Loading")],
+      [
+        html.main([], [html.text("Loading")]),
+        html.aside([], [html.text("Loading")]),
+      ],
     ),
   ])
 }
 
-pub fn items(items: List(Item)) {
+pub fn content(items: List(Item)) {
+  html.div([], [
+    items_section(items),
+    scratch_area(items, birl.now() |> birl.get_day),
+  ])
+}
+
+pub fn items_section(items: List(Item)) {
   html.main(
     [
       attribute.class("flex flex-col space-y-4"),
       hx.trigger([Event("reload from:body", [])]),
-      hx.get("/items"),
+      hx.get("/"),
       hx.swap(hx.OuterHTML, None),
     ],
     items |> list.map(render_item),
@@ -61,4 +72,8 @@ fn render_item(item: Item) {
       ]),
     ],
   )
+}
+
+pub fn scratch_area(_items: List(Item), _end_date: Day) {
+  html.aside([], [])
 }

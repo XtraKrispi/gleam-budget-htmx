@@ -36,8 +36,8 @@ fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
-    [] -> home_page()
-    ["items"] -> items(req, ctx.db)
+    [] -> home_page(req, ctx.db)
+    //["items"] -> items(req, ctx.db)
     ["admin", "definitions"] -> definitions_page(req, ctx.db)
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
     ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
@@ -49,10 +49,14 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   }
 }
 
-fn home_page() -> Response {
-  home.full_page()
-  |> layout.with_layout
-  |> to_response(200)
+fn home_page(req, db) -> Response {
+  case request.is_htmx(req) && !request.is_boosted(req) {
+    True -> home_content(req, db)
+    False ->
+      home.full_page()
+      |> layout.with_layout
+      |> to_response(200)
+  }
 }
 
 fn definitions_page(req: Request, database: DB) -> Response {
@@ -87,7 +91,7 @@ fn archive_page() -> Response {
   |> to_response(200)
 }
 
-pub fn items(req: Request, db: DB) -> Response {
+pub fn home_content(req: Request, db: DB) -> Response {
   let query_strings = wisp.get_query(req)
   let end_date =
     query_strings
@@ -108,7 +112,7 @@ pub fn items(req: Request, db: DB) -> Response {
             && item.date == arch.date
           })
         })
-      home.items(items)
+      home.content(items)
       |> my_list.singleton
       |> to_response(200)
     }
