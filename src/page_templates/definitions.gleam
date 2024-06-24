@@ -27,10 +27,6 @@ pub fn full_page() {
             hx.target(CssSelector("#definition_modal")),
             hx.swap(OuterHTML, None),
           ],
-          // <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-          //   <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
-          // </svg>
-
           [
             html.text("New"),
             html.svg(
@@ -105,7 +101,19 @@ fn render_definition_row(definition: Definition) {
       hx.swap(OuterHTML, None),
     ],
     [
-      html.th([], [html.text(definition.description)]),
+      html.th([attribute.class("flex justify-between")], [
+        html.span([], [html.text(definition.description)]),
+        ..{
+          case definition.is_automatic_withdrawal {
+            True -> [
+              html.div([attribute.class("badge badge-primary")], [
+                html.text("Automatic"),
+              ]),
+            ]
+            False -> []
+          }
+        }
+      ]),
       html.td([], [
         html.text(
           "$" <> formatters.format_float(definition.amount, 2, Some(",")),
@@ -128,7 +136,6 @@ fn definition_modal_shell() {
 }
 
 pub fn render_definition_modal(definition: Definition) {
-  let Definition(id, desc, amt, freq, start, end) = definition
   html.dialog([attribute.class("modal"), attribute.id("definition_modal")], [
     html.div([attribute.class("modal-box")], [
       html.form([attribute.method("dialog")], [
@@ -164,26 +171,41 @@ pub fn render_definition_modal(definition: Definition) {
       html.form(
         [
           attribute.class("flex flex-col space-y-2"),
-          hx.post("/admin/definitions/" <> id.unwrap(id)),
+          hx.post("/admin/definitions/" <> id.unwrap(definition.id)),
         ],
         [
           html.input([
             attribute.type_("hidden"),
             attribute.name("id"),
-            attribute.value(id.unwrap(id)),
+            attribute.value(id.unwrap(definition.id)),
           ]),
           html.label([attribute.class("form-control w-full max-w-xs")], [
             html.input([
               attribute.class("input input-bordered w-full max-w-xs"),
-              attribute.value(desc),
+              attribute.value(definition.description),
               attribute.placeholder("Description"),
               attribute.name("description"),
               attribute.required(True),
             ]),
           ]),
+          html.div([attribute.class("form-control w-full max-w-xs")], [
+            html.label([attribute.class("label cursor-pointer")], [
+              html.span([attribute.class("label-text")], [
+                html.text("Is Automatic?"),
+              ]),
+              html.input([
+                attribute.class("checkbox"),
+                attribute.name("is_automatic_withdrawal"),
+                attribute.type_("checkbox"),
+                attribute.checked(definition.is_automatic_withdrawal),
+              ]),
+            ]),
+          ]),
           html.input([
             attribute.class("input input-bordered w-full max-w-xs"),
-            attribute.value(amt |> formatters.format_float(2, None)),
+            attribute.value(
+              definition.amount |> formatters.format_float(2, None),
+            ),
             attribute.placeholder("Amount"),
             attribute.name("amount"),
             attribute.required(True),
@@ -197,7 +219,7 @@ pub fn render_definition_modal(definition: Definition) {
               |> list.map(fn(f) {
                 html.option(
                   [
-                    attribute.selected(f == freq),
+                    attribute.selected(f == definition.frequency),
                     attribute.value(definition.encode_frequency(f)),
                   ],
                   formatters.format_frequency(f),
@@ -206,7 +228,7 @@ pub fn render_definition_modal(definition: Definition) {
           ),
           html.input([
             attribute.class("input input-bordered w-full max-w-xs"),
-            attribute.value(start |> formatters.format_date),
+            attribute.value(definition.start_date |> formatters.format_date),
             attribute.name("start_date"),
             attribute.type_("date"),
             attribute.required(True),
@@ -214,7 +236,9 @@ pub fn render_definition_modal(definition: Definition) {
           html.input([
             attribute.class("input input-bordered w-full max-w-xs"),
             attribute.value(
-              end |> option.map(formatters.format_date) |> option.unwrap(""),
+              definition.end_date
+              |> option.map(formatters.format_date)
+              |> option.unwrap(""),
             ),
             attribute.name("end_date"),
             attribute.type_("date"),

@@ -14,6 +14,7 @@ pub type Definition {
     frequency: Frequency,
     start_date: Day,
     end_date: Option(Day),
+    is_automatic_withdrawal: Bool,
   )
 }
 

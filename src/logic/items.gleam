@@ -36,16 +36,34 @@ fn get_items_from_definition(def: Definition) -> Iterator(Item) {
   case def.frequency {
     definition.OneTime ->
       iterator.once(fn() {
-        Item(def.id, def.description, def.amount, def.start_date)
+        Item(
+          def.id,
+          def.description,
+          def.amount,
+          def.start_date,
+          def.is_automatic_withdrawal,
+        )
       })
     definition.BiWeekly ->
       iterator.unfold(
-        Item(def.id, def.description, def.amount, def.start_date),
+        Item(
+          def.id,
+          def.description,
+          def.amount,
+          def.start_date,
+          def.is_automatic_withdrawal,
+        ),
         iterate_item(_, duration.days(14), def.end_date),
       )
     definition.Monthly ->
       iterator.unfold(
-        Item(def.id, def.description, def.amount, def.start_date),
+        Item(
+          def.id,
+          def.description,
+          def.amount,
+          def.start_date,
+          def.is_automatic_withdrawal,
+        ),
         iterate_item(_, duration.months(1), def.end_date),
       )
   }

@@ -16,6 +16,7 @@ pub fn get_all(db: DB) -> Result(List(Definition), Error) {
         , frequency
         , start_date
         , end_date
+        , is_automatic_withdrawal
    FROM definitions"
   |> based.new_query
   |> based.all(db, definition_decoder)
@@ -30,6 +31,7 @@ pub fn get_one(id: Id(Definition), db: DB) -> Result(Definition, Error) {
         , frequency
         , start_date
         , end_date
+        , is_automatic_withdrawal
    FROM definitions
    WHERE identifier = $1"
   |> based.new_query
@@ -51,13 +53,14 @@ pub fn upsert_definition(definition: Definition, db: DB) -> Result(Nil, Error) {
            ,frequency = $3
            ,start_date = $4
            ,end_date = $5
-       WHERE identifier = $6",
+           ,is_automatic_withdrawal = $6
+       WHERE identifier = $7",
       )
     }
     Error(NotFoundError) -> {
       Ok(
-        "INSERT INTO definitions(description, amount, frequency, start_date, end_date, identifier)
-       VALUES($1, $2, $3, $4, $5, $6)",
+        "INSERT INTO definitions(description, amount, frequency, start_date, end_date, is_automatic_withdrawal, identifier)
+       VALUES($1, $2, $3, $4, $5, $6, $7)",
       )
     }
     Error(e) -> Error(e)
@@ -73,6 +76,7 @@ pub fn upsert_definition(definition: Definition, db: DB) -> Result(Nil, Error) {
     definition.end_date
       |> option.map(fn(d) { d |> formatters.format_date |> based.string })
       |> option.unwrap(based.null()),
+    based.bool(definition.is_automatic_withdrawal),
     based.string(id.unwrap(definition.id)),
   ])
   |> based.execute(db)
@@ -81,13 +85,14 @@ pub fn upsert_definition(definition: Definition, db: DB) -> Result(Nil, Error) {
 }
 
 fn definition_decoder(dyn: Dynamic) -> Result(Definition, DecodeErrors) {
-  dynamic.decode6(
-    Definition,
+  dynamic.decode7(
+    fn(a, b, c, d, e, f, g) { Definition(a, b, c, d, e, f, g == 1) },
     dynamic.element(0, id.decoder),
     dynamic.element(1, dynamic.string),
     dynamic.element(2, dynamic.float),
     dynamic.element(3, definition.frequency_decoder),
     dynamic.element(4, decoders.day_decoder),
     dynamic.element(5, dynamic.optional(decoders.day_decoder)),
+    dynamic.element(6, dynamic.int),
   )(dyn)
 }

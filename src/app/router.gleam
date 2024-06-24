@@ -6,6 +6,7 @@ import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
 import gleam/http.{Get, Post}
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -50,10 +51,16 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
 }
 
 fn home_page(req, db) -> Response {
+  let query_strings = wisp.get_query(req)
+  let end_date =
+    query_strings
+    |> list.find(fn(qs) { string.lowercase(qs.0) == "end_date" })
+    |> result.try(fn(qs) { decoders.parse_day(qs.1) })
+    |> result.unwrap(birl.get_day(birl.add(birl.now(), duration.days(21))))
   case request.is_htmx(req) && !request.is_boosted(req) {
-    True -> home_content(req, db)
+    True -> home_content(end_date, db)
     False ->
-      home.full_page()
+      home.full_page(end_date)
       |> layout.with_layout
       |> to_response(200)
   }
@@ -91,14 +98,7 @@ fn archive_page() -> Response {
   |> to_response(200)
 }
 
-pub fn home_content(req: Request, db: DB) -> Response {
-  let query_strings = wisp.get_query(req)
-  let end_date =
-    query_strings
-    |> list.find(fn(qs) { string.lowercase(qs.0) == "end_date" })
-    |> result.try(fn(qs) { decoders.parse_day(qs.1) })
-    |> result.unwrap(birl.get_day(birl.add(birl.now(), duration.days(21))))
-
+pub fn home_content(end_date, db: DB) -> Response {
   let definitions = definition_db.get_all(db)
   let archive = archive_db.get_all(db)
 
@@ -112,7 +112,7 @@ pub fn home_content(req: Request, db: DB) -> Response {
             && item.date == arch.date
           })
         })
-      home.content(items)
+      home.content(items, end_date)
       |> my_list.singleton
       |> to_response(200)
     }
@@ -139,6 +139,7 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
             birl.now()
               |> birl.get_day,
             None,
+            False,
           ))
       }
 
@@ -258,7 +259,25 @@ fn hydrate_definition(form: wisp.FormData) {
     }),
   )
 
-  Ok(Definition(id, description, amount, frequency, start_date, end_date))
+  let is_automatic_withdrawal =
+    form.values
+    |> list.find_map(fn(kvp) {
+      case kvp.0 == "is_automatic_withdrawal", kvp.1 {
+        True, "on" -> Ok(True)
+        _, _ -> Error(Nil)
+      }
+    })
+    |> result.unwrap(False)
+
+  Ok(Definition(
+    id,
+    description,
+    amount,
+    frequency,
+    start_date,
+    end_date,
+    is_automatic_withdrawal,
+  ))
 }
 
 fn hydrate_item(form: wisp.FormData) {
@@ -302,7 +321,16 @@ fn hydrate_item(form: wisp.FormData) {
     }),
   )
 
-  Ok(Item(id, description, amount, date))
+  use is_automatic_withdrawal <- result.try(
+    form.values
+    |> list.find_map(fn(kvp) {
+      case kvp.0 == "is_automatic_withdrawal" {
+        True -> Ok(kvp.1 == "true")
+        False -> Error(Nil)
+      }
+    }),
+  )
+  Ok(Item(id, description, amount, date, is_automatic_withdrawal))
 }
 
 fn convert_to_archive(item: Item, action) {

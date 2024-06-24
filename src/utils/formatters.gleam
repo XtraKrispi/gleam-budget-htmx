@@ -18,7 +18,9 @@ fn split_thousands(data: Int, separator: String, accum: StringBuilder) {
         data / 1000,
         separator,
         accum
-          |> string_builder.prepend(int.to_string(remainder))
+          |> string_builder.prepend(
+            remainder |> int.to_string |> string.pad_left(3, "0"),
+          )
           |> string_builder.prepend(separator),
       )
     }
