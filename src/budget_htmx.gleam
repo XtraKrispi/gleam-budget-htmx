@@ -29,6 +29,11 @@ pub fn main() {
     |> based.new_query
     |> based.execute(db)
 
+  let assert Ok(_) =
+    "CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT, password_reset_token TEXT);"
+    |> based.new_query
+    |> based.execute(db)
+
   wisp.configure_logger()
   let secret_key_base = wisp.random_string(64)
 

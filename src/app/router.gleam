@@ -18,6 +18,7 @@ import lustre/element/html
 import page_templates/archive as archive_page
 import page_templates/definitions
 import page_templates/home
+import page_templates/login as login_page
 import types/archived_item.{ArchivedItem, Paid, Skipped}
 import types/definition.{type Definition, Definition, OneTime}
 import types/id.{type Id}
@@ -33,10 +34,30 @@ fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
   |> wisp.html_response(status_code)
 }
 
+fn validate_cookie(_val: String) -> Result(Nil, Nil) {
+  Ok(Nil)
+}
+
+pub fn requires_auth(req: Request, handler: fn(Request) -> Response) -> Response {
+  {
+    use cookie_val <- result.try(wisp.get_cookie(
+      req,
+      "AUTH_COOKIE",
+      wisp.Signed,
+    ))
+
+    use _ <- result.try(validate_cookie(cookie_val))
+
+    Ok(handler(req))
+  }
+  |> result.unwrap(wisp.redirect("/archive"))
+}
+
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
     [] -> home_page(req, ctx.db)
+    ["login"] -> login_page()
     ["admin", "definitions"] -> definitions_page(req, ctx.db)
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
     ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
@@ -44,6 +65,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
     ["archive", "skip"] -> archive(req, ctx.db, Skipped)
     ["archive", "pay"] -> archive(req, ctx.db, Paid)
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
+    ["register"] -> register(req, ctx.db)
     _ -> wisp.not_found()
   }
 }
@@ -72,6 +94,7 @@ fn home_page(req, db) -> Response {
       home.full_page(end_date, amount_in_bank, amount_left_over)
       |> layout.with_layout
       |> to_response(200)
+      |> wisp.set_header("NEEDS_AUTH", "Hello")
   }
 }
 
@@ -129,6 +152,14 @@ fn archive_page(req: Request, db: DB) -> Response {
       |> layout.with_layout
       |> to_response(200)
   }
+}
+
+pub fn login_page() -> Response {
+  login_page.full_page()
+  |> my_list.singleton
+  |> layout.with_page_shell
+  |> my_list.singleton
+  |> to_response(200)
 }
 
 pub fn home_content(
@@ -381,4 +412,12 @@ fn convert_to_archive(item: Item, action) {
     birl.now() |> birl.get_day,
     action,
   )
+}
+
+pub fn register(req: Request, db: DB) {
+  use <- wisp.require_method(req, http.Post)
+
+  use form_data <- wisp.require_form(req)
+
+  wisp.no_content()
 }

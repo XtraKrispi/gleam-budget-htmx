@@ -3,6 +3,10 @@
 [![Package Version](https://img.shields.io/hexpm/v/budget_htmx)](https://hex.pm/packages/budget_htmx)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/budget_htmx/)
 
+Install:
+gleam
+elixir
+
 ```sh
 gleam add budget_htmx
 ```
