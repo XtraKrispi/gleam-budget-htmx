@@ -5,10 +5,7 @@ import birl
 import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
-import gleam/float
 import gleam/http.{Get, Post}
-import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -40,11 +37,10 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
     [] -> home_page(req, ctx.db)
-    //["items"] -> items(req, ctx.db)
     ["admin", "definitions"] -> definitions_page(req, ctx.db)
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
     ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
-    ["archive"] -> archive_page()
+    ["archive"] -> archive_page(req, ctx.db)
     ["archive", "skip"] -> archive(req, ctx.db, Skipped)
     ["archive", "pay"] -> archive(req, ctx.db, Paid)
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
@@ -64,13 +60,11 @@ fn home_page(req, db) -> Response {
     query_strings
     |> list.find(fn(qs) { string.lowercase(qs.0) == "amount_in_bank" })
     |> result.try(fn(qs) { decoders.parse_float(qs.1) })
-    |> io.debug
 
   let amount_left_over =
     query_strings
     |> list.find(fn(qs) { string.lowercase(qs.0) == "amount_left_over" })
     |> result.try(fn(qs) { decoders.parse_float(qs.1) })
-    |> io.debug
 
   case request.is_htmx(req) && !request.is_boosted(req) {
     True -> home_content(end_date, amount_in_bank, amount_left_over, db)
@@ -107,10 +101,34 @@ fn definitions_page(req: Request, database: DB) -> Response {
   }
 }
 
-fn archive_page() -> Response {
-  archive_page.full_page()
-  |> layout.with_layout
-  |> to_response(200)
+fn archive_page(req: Request, db: DB) -> Response {
+  case request.is_htmx(req) && !request.is_boosted(req) {
+    True -> {
+      let archive_items = archive_db.get_all(db)
+      case archive_items {
+        Ok(items) ->
+          archive_page.items(items)
+          |> my_list.singleton
+          |> to_response(200)
+        Error(_) ->
+          layout.add_toast(
+            html.span([], [
+              html.text(
+                "There was a problem retrieving archive items. Please refresh and try again.",
+              ),
+            ]),
+            layout.Error,
+          )
+          |> my_list.singleton
+          |> to_response(200)
+          |> wisp.set_header("HX-Reswap", "none")
+      }
+    }
+    False ->
+      archive_page.full_page()
+      |> layout.with_layout
+      |> to_response(200)
+  }
 }
 
 pub fn home_content(

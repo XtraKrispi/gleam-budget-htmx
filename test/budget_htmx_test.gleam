@@ -20,3 +20,6 @@ pub fn decode_date_test() {
   |> result.map(formatters.format_date)
   |> should.equal(Ok(date_str))
 }
+//TODO:
+// Test for float formatter, positive negative, < 1
+// test for all formatters/parsers
