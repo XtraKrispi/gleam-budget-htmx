@@ -46,7 +46,14 @@ pub fn format_float(
 
   let assert Ok(before_int) = int.parse(before_decimal)
   thousands_separator
-  |> option.map(split_thousands(before_int, _, string_builder.new()))
+  |> option.map(fn(x) {
+    let val =
+      split_thousands(int.absolute_value(before_int), x, string_builder.new())
+    case before_int < 0 {
+      True -> "-" <> val
+      False -> val
+    }
+  })
   |> option.unwrap(before_decimal)
   <> case decimal_places == 0 {
     True -> ""

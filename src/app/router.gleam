@@ -5,7 +5,10 @@ import birl
 import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
+import gleam/float
 import gleam/http.{Get, Post}
+import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -56,10 +59,23 @@ fn home_page(req, db) -> Response {
     |> list.find(fn(qs) { string.lowercase(qs.0) == "end_date" })
     |> result.try(fn(qs) { decoders.parse_day(qs.1) })
     |> result.unwrap(birl.get_day(birl.add(birl.now(), duration.days(21))))
+
+  let amount_in_bank =
+    query_strings
+    |> list.find(fn(qs) { string.lowercase(qs.0) == "amount_in_bank" })
+    |> result.try(fn(qs) { decoders.parse_float(qs.1) })
+    |> io.debug
+
+  let amount_left_over =
+    query_strings
+    |> list.find(fn(qs) { string.lowercase(qs.0) == "amount_left_over" })
+    |> result.try(fn(qs) { decoders.parse_float(qs.1) })
+    |> io.debug
+
   case request.is_htmx(req) && !request.is_boosted(req) {
-    True -> home_content(end_date, db)
+    True -> home_content(end_date, amount_in_bank, amount_left_over, db)
     False ->
-      home.full_page(end_date)
+      home.full_page(end_date, amount_in_bank, amount_left_over)
       |> layout.with_layout
       |> to_response(200)
   }
@@ -97,7 +113,12 @@ fn archive_page() -> Response {
   |> to_response(200)
 }
 
-pub fn home_content(end_date, db: DB) -> Response {
+pub fn home_content(
+  end_date,
+  amount_in_bank: Result(Float, Nil),
+  amount_left_over: Result(Float, Nil),
+  db: DB,
+) -> Response {
   let definitions = definition_db.get_all(db)
   let archive = archive_db.get_all(db)
 
@@ -111,7 +132,7 @@ pub fn home_content(end_date, db: DB) -> Response {
             && item.date == arch.date
           })
         })
-      home.content(items, end_date)
+      home.content(items, end_date, amount_in_bank, amount_left_over)
       |> my_list.singleton
       |> to_response(200)
     }

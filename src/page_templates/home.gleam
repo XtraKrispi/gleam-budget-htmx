@@ -1,13 +1,36 @@
 import birl.{type Day}
+import gleam/float
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
+import gleam/string
 import lustre/attribute
 import lustre/element/html
 import lustre_hx.{Event} as hx
 import types/item.{type Item}
 import utils/formatters
 
-pub fn full_page(end_date) {
+pub fn full_page(
+  end_date,
+  amount_in_bank: Result(Float, Nil),
+  amount_left_over: Result(Float, Nil),
+) {
+  let amt_in_bank_query = case amount_in_bank {
+    Ok(f) -> [#("amount_in_bank", formatters.format_float(f, 2, None))]
+    _ -> []
+  }
+  let amt_in_left_over_query = case amount_left_over {
+    Ok(f) -> [#("amount_left_over", formatters.format_float(f, 2, None))]
+    _ -> []
+  }
+  let query_string =
+    [
+      #("end_date", formatters.format_date(end_date)),
+      ..{ list.concat([amt_in_bank_query, amt_in_left_over_query]) }
+    ]
+    |> list.map(fn(x) { string.join([x.0, x.1], "=") })
+    |> string.join("&")
+
   html.div([attribute.class("px-20 py-10")], [
     html.header([attribute.class("prose lg:prose-xl flex space-x-4")], [
       html.h2([], [html.text("Home")]),
@@ -15,7 +38,7 @@ pub fn full_page(end_date) {
     html.div(
       [
         hx.trigger([Event("load", [])]),
-        hx.get("/?end_date=" <> formatters.format_date(end_date)),
+        hx.get("/?" <> query_string),
         hx.swap(hx.OuterHTML, None),
         attribute.id("home_content"),
       ],
@@ -27,7 +50,12 @@ pub fn full_page(end_date) {
   ])
 }
 
-pub fn content(items: List(Item), end_date: Day) {
+pub fn content(
+  items: List(Item),
+  end_date: Day,
+  amount_in_bank: Result(Float, Nil),
+  amount_left_over: Result(Float, Nil),
+) {
   html.div(
     [
       attribute.class("flex space-x-12 w-screen"),
@@ -36,7 +64,10 @@ pub fn content(items: List(Item), end_date: Day) {
       hx.get("/"),
       hx.swap(hx.OuterHTML, None),
     ],
-    [items_section(items), scratch_area(items, end_date)],
+    [
+      items_section(items),
+      scratch_area(items, end_date, amount_in_bank, amount_left_over),
+    ],
   )
 }
 
@@ -87,45 +118,74 @@ fn render_item(item: Item) {
   )
 }
 
-pub fn scratch_area(items: List(Item), end_date: Day) {
+pub fn scratch_area(
+  items: List(Item),
+  end_date: Day,
+  amount_in_bank: Result(Float, Nil),
+  amount_left_over: Result(Float, Nil),
+) {
   let total = items |> list.fold(0.0, fn(a, b) { a +. b.amount })
-  html.aside([attribute.class("flex flex-col space-y-4 min-w-[320px]")], [
-    html.form([], [
-      html.input([
-        attribute.class("input input-bordered w-full max-w-xs"),
-        attribute.value(end_date |> formatters.format_date),
-        attribute.name("end_date"),
-        attribute.type_("date"),
+  let amount_in_bank_calc = amount_in_bank |> result.unwrap(0.0)
+  let amount_left_over_calc = amount_left_over |> result.unwrap(0.0)
+  let total_outstanding =
+    float.max(0.0, { total +. amount_left_over_calc } -. amount_in_bank_calc)
+  html.aside([attribute.class("prose flex flex-col space-y-4 min-w-[320px]")], [
+    html.form(
+      [
+        attribute.class("flex flex-col space-y-4"),
         hx.get("/"),
         hx.target(hx.CssSelector("#home_content")),
-        hx.trigger([Event("change", [])]),
         hx.swap(hx.OuterHTML, None),
         hx.push_url(True),
-      ]),
-    ]),
-    html.div([attribute.class("prose")], [
-      html.form([attribute.class("flex flex-col space-y-4")], [
+      ],
+      [
+        html.input([
+          attribute.class("input input-bordered w-full max-w-xs"),
+          attribute.value(end_date |> formatters.format_date),
+          attribute.name("end_date"),
+          attribute.type_("date"),
+          attribute.attribute("hx-include", "closest form"),
+        ]),
         html.input([
           attribute.class("input input-bordered w-full max-w-xs"),
           attribute.placeholder("Amount in account"),
-          attribute.name("in_bank"),
+          attribute.name("amount_in_bank"),
+          attribute.value(
+            amount_in_bank
+            |> result.map(formatters.format_float(_, 2, None))
+            |> result.unwrap(""),
+          ),
         ]),
         html.input([
           attribute.class("input input-bordered w-full max-w-xs"),
-          attribute.placeholder("Amount left over"),
-          attribute.name("left_over"),
+          attribute.placeholder("Amount to be left over"),
+          attribute.name("amount_left_over"),
+          attribute.attribute("hx-include", "closest form"),
+          attribute.value(
+            amount_left_over
+            |> result.map(formatters.format_float(_, 2, None))
+            |> result.unwrap(""),
+          ),
+        ]),
+        html.button(
+          [attribute.class("btn btn-primary"), attribute.type_("submit")],
+          [html.text("Recalculate")],
+        ),
+      ],
+    ),
+    html.div([], [
+      html.h3([attribute.class("flex justify-between")], [
+        html.span([], [html.text("Total Owing:")]),
+        html.span([], [
+          html.text("$" <> formatters.format_float(total, 2, Some(","))),
         ]),
       ]),
-      html.div([], [
-        html.h3([attribute.class("flex justify-between")], [
-          html.span([], [html.text("Total Owing:")]),
-          html.span([], [
-            html.text("$" <> formatters.format_float(total, 2, Some(","))),
-          ]),
-        ]),
-        html.h3([attribute.class("flex justify-between")], [
-          html.span([], [html.text("Total Outstanding:")]),
-          html.span([], [html.text("$" <> "0.00")]),
+      html.h3([attribute.class("flex justify-between")], [
+        html.span([], [html.text("Total Outstanding:")]),
+        html.span([], [
+          html.text(
+            "$" <> formatters.format_float(total_outstanding, 2, Some(",")),
+          ),
         ]),
       ]),
     ]),
