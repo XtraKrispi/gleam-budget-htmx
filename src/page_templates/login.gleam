@@ -1,14 +1,17 @@
+import gleam/option.{None}
 import lustre/attribute
 import lustre/element/html
 import lustre/element/svg
 import lustre_hx as hx
+import types/forms
 
 pub fn full_page() {
   html.div(
     [
       attribute.class("hero bg-base-200 min-h-screen"),
       hx.hyper_script(
-        "on hideRegistrationModal from body call registration_modal.close() end",
+        "on hideRegistrationModal from body call registration_modal.close() end
+         on showRegistrationModal from body call registration_modal.showModal() end",
       ),
     ],
     [
@@ -27,10 +30,10 @@ pub fn full_page() {
           ]),
           html.button(
             [
+              hx.get("/register"),
+              hx.target(hx.CssSelector("#registration_modal_form")),
+              hx.swap(hx.OuterHTML, None),
               attribute.class("btn btn-primary"),
-              hx.hyper_script(
-                "on click call registration_modal.showModal() end",
-              ),
             ],
             [html.text("Sign Up")],
           ),
@@ -120,25 +123,52 @@ pub fn render_registration_modal() {
         ),
       ]),
       html.h3([attribute.class("font-bold text-lg")], [html.text("Sign Up")]),
-      html.form([attribute.class("flex flex-col space-y-2")], [
-        html.label([attribute.class("form-control w-full max-w-xs mt-2")], [
-          html.input([
-            attribute.class("input input-bordered w-full max-w-xs"),
-            attribute.placeholder("Email"),
-            attribute.name("email"),
-            attribute.required(True),
-            attribute.type_("email"),
-            attribute.attribute("hx-validate", "true"),
-          ]),
+      registration_form(forms.default_registration_form()),
+    ]),
+  ])
+}
+
+pub fn registration_form(form: forms.RegistrationForm) {
+  html.form(
+    [
+      attribute.class("flex flex-col space-y-2"),
+      hx.post("/register"),
+      hx.swap(hx.OuterHTML, None),
+      attribute.id("registration_modal_form"),
+    ],
+    [
+      html.label([attribute.class(" w-full max-w-xs mt-2")], [
+        html.input([
+          attribute.class("input input-bordered w-full max-w-xs grow"),
+          attribute.placeholder("Email"),
+          attribute.name("email"),
+          attribute.required(True),
+          attribute.type_("email"),
+          attribute.attribute("hx-validate", "true"),
+          attribute.value(form.email.value),
         ]),
-        html.label([attribute.class("form-control w-full max-w-xs mt-2")], [
+      ]),
+      html.label([attribute.class("form-control w-full max-w-xs mt-2")], [
+        html.input([
+          attribute.class("input input-bordered w-full max-w-xs"),
+          attribute.placeholder("Name"),
+          attribute.name("name"),
+          attribute.required(True),
+          attribute.type_("text"),
+          attribute.value(form.name),
+        ]),
+      ]),
+      html.div([], [
+        html.label([attribute.class("form-control w-full max-w-xs")], [
           html.input([
             attribute.class("input input-bordered w-full max-w-xs"),
             attribute.placeholder("Password"),
             attribute.name("password"),
             attribute.required(True),
             attribute.type_("password"),
+            attribute.id("password"),
             attribute.attribute("hx-validate", "true"),
+            attribute.value(form.password.value),
           ]),
         ]),
         html.label([attribute.class("form-control w-full max-w-xs mt-2")], [
@@ -146,27 +176,34 @@ pub fn render_registration_modal() {
             attribute.class("input input-bordered w-full max-w-xs"),
             attribute.placeholder("Password Confirmation"),
             attribute.name("password_confirm"),
+            attribute.id("password_confirm"),
             attribute.required(True),
             attribute.type_("password"),
             attribute.attribute("hx-validate", "true"),
+            attribute.value(form.password_confirm.value),
           ]),
-        ]),
-        html.label([attribute.class("form-control w-full max-w-xs mt-2")], [
-          html.input([
-            attribute.class("input input-bordered w-full max-w-xs"),
-            attribute.placeholder("Name"),
-            attribute.name("name"),
-            attribute.required(True),
-            attribute.type_("text"),
-          ]),
-        ]),
-        html.div([attribute.class("modal-action")], [
-          html.button(
-            [attribute.class("btn btn-primary"), attribute.type_("submit")],
-            [html.text("Sign Up")],
-          ),
+          user_validation_error_badge("user-validation-password-match", ""),
         ]),
       ]),
-    ]),
-  ])
+      html.div([attribute.class("modal-action")], [
+        html.button(
+          [attribute.class("btn btn-primary"), attribute.type_("submit")],
+          [html.text("Sign Up")],
+        ),
+      ]),
+    ],
+  )
+}
+
+pub fn user_validation_error_badge(id, txt) {
+  html.div(
+    [
+      attribute.class("label"),
+      attribute.classes([#("hidden", txt == "")]),
+      attribute.id(id),
+    ],
+    [
+      html.span([attribute.class("label-text-alt text-error")], [html.text(txt)]),
+    ],
+  )
 }

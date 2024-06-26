@@ -23,6 +23,20 @@ pub fn get_by_email(email: String, db: DB) {
   |> result.map_error(error.DbError)
 }
 
+pub fn insert_user(user: User, db: DB) {
+  "INSERT INTO users(email, name, password_hash, password_reset_token)
+    VALUES($1, $2, $3, null)"
+  |> based.new_query
+  |> based.with_values([
+    based.string(user.email),
+    based.string(user.name),
+    based.string(user.unwrap_password(user.password_hash)),
+  ])
+  |> based.execute(db)
+  |> result.map_error(error.DbError)
+  |> result.replace(Nil)
+}
+
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {
   dynamic.decode3(
     User,

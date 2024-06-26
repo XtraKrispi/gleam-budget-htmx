@@ -20,7 +20,16 @@ pub fn with_page_shell(content: List(Element(t))) -> Element(t) {
         "",
       ),
     ]),
-    html.body([attribute.class("w-screen")], content),
+    html.body([attribute.class("w-screen")], [
+      html.div(
+        [
+          attribute.class("toast toast-top toast-end z-[1000]"),
+          attribute.id("toast-container"),
+        ],
+        [],
+      ),
+      ..content
+    ]),
   ])
 }
 
@@ -34,13 +43,6 @@ pub fn with_layout(content: Element(t)) -> List(Element(t)) {
   ]
 
   [
-    html.div(
-      [
-        attribute.class("toast toast-top toast-end z-[1000]"),
-        attribute.id("toast-container"),
-      ],
-      [],
-    ),
     html.div([attribute.class("navbar bg-base-100"), hx.boost(True)], [
       html.div([attribute.class("navbar-start")], [
         html.div([attribute.class("dropdown")], [

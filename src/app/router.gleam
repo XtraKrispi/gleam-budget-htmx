@@ -5,9 +5,12 @@ import birl
 import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
+import db/users as users_db
 import gleam/http.{Get, Post}
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/string_builder
@@ -21,8 +24,10 @@ import page_templates/home
 import page_templates/login as login_page
 import types/archived_item.{ArchivedItem, Paid, Skipped}
 import types/definition.{type Definition, Definition, OneTime}
+import types/forms
 import types/id.{type Id}
 import types/item.{type Item, Item}
+import types/user.{User}
 import utils/decoders
 import utils/list as my_list
 import wisp.{type Request, type Response}
@@ -415,9 +420,146 @@ fn convert_to_archive(item: Item, action) {
 }
 
 pub fn register(req: Request, db: DB) {
-  use <- wisp.require_method(req, http.Post)
+  case req.method {
+    http.Get -> {
+      login_page.registration_form(forms.default_registration_form())
+      |> my_list.singleton
+      |> to_response(200)
+      |> wisp.set_header("HX-Trigger", "showRegistrationModal")
+    }
+    http.Post -> {
+      use form_data <- wisp.require_form(req)
 
-  use form_data <- wisp.require_form(req)
+      let form = {
+        use email <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "email" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          })
+          |> result.map(fn(v) {
+            forms.InputWithValidation(v, validate_email(v, db))
+          }),
+        )
 
-  wisp.no_content()
+        use name <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "name" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          }),
+        )
+
+        use password <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "password" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          })
+          |> result.map(fn(v) {
+            forms.InputWithValidation(v, validate_password(v))
+          }),
+        )
+
+        use password_confirm <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "password_confirm" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          })
+          |> result.map(fn(p) {
+            forms.InputWithValidation(p, case password.value == p {
+              True -> []
+              False -> ["Passwords don't match"]
+            })
+          }),
+        )
+
+        Ok(forms.RegistrationForm(email, name, password, password_confirm))
+      }
+
+      case form {
+        Ok(f) ->
+          case is_form_valid(f) {
+            True -> {
+              // Write the user info
+              case
+                users_db.insert_user(
+                  User(
+                    f.email.value,
+                    user.hash_password(f.password.value),
+                    f.name,
+                  ),
+                  db,
+                )
+              {
+                Ok(_) ->
+                  layout.add_toast(
+                    html.span([], [
+                      html.text("You've been signed up! Please log in below"),
+                    ]),
+                    layout.Success,
+                  )
+                  |> my_list.singleton
+                  |> to_response(200)
+                  |> wisp.set_header("HX-Trigger", "hideRegistrationModal")
+
+                Error(_) -> {
+                  [
+                    layout.add_toast(
+                      html.span([], [
+                        html.text(
+                          "There was an issue signing up, please try again.",
+                        ),
+                      ]),
+                      layout.Error,
+                    ),
+                    login_page.registration_form(f),
+                  ]
+                  |> to_response(200)
+                }
+              }
+            }
+            False ->
+              login_page.registration_form(f)
+              |> my_list.singleton
+              |> to_response(200)
+          }
+        Error(_) -> wisp.no_content() |> wisp.set_header("HX-Reswap", "none")
+      }
+    }
+    _ -> wisp.not_found()
+  }
+}
+
+fn is_form_valid(form: forms.RegistrationForm) {
+  list.is_empty(form.email.errors)
+  && list.is_empty(form.password.errors)
+  && list.is_empty(form.password_confirm.errors)
+}
+
+fn validate_email(email: String, db: DB) {
+  case users_db.get_by_email(email, db) {
+    Ok(_) -> ["Email is already taken"]
+    Error(_) -> []
+  }
+}
+
+fn validate_password(pass: String) {
+  let assert Ok(reg) =
+    regex.from_string(
+      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+    )
+  case regex.check(reg, pass) {
+    True -> []
+    False -> ["Password does not meet the requirements"]
+  }
 }
