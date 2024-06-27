@@ -1,3 +1,5 @@
+import app/handlers/common.{error_toast, to_response}
+import app/handlers/definitions.{definition, definitions_page} as _definitions_handlers
 import app/layout
 import app/web.{type Context}
 import based.{type DB}
@@ -10,25 +12,21 @@ import db/users as users_db
 import gleam/http.{Get, Post}
 import gleam/io
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/order
 import gleam/regex
 import gleam/result
 import gleam/string
-import gleam/string_builder
 import htmx/request
 import logic/items
-import lustre/element.{type Element}
 import lustre/element/html
 import page_templates/archive as archive_page
-import page_templates/definitions
 import page_templates/home
 import page_templates/login as login_page
 import types/archived_item.{ArchivedItem, Paid, Skipped}
-import types/definition.{type Definition, Definition, OneTime}
 import types/error.{type Error, SessionError}
 import types/forms
-import types/id.{type Id}
+import types/id
 import types/item.{type Item, Item}
 import types/session.{Session, SessionId}
 import types/user.{type User, Email, User}
@@ -36,13 +34,6 @@ import utils/decoders
 import utils/list as my_list
 import utils/password
 import wisp.{type Request, type Response}
-
-fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
-  elems
-  |> list.map(element.to_document_string_builder)
-  |> string_builder.concat
-  |> wisp.html_response(status_code)
-}
 
 fn validate_cookie(val: String, db: DB) -> Result(User, Error) {
   let session_id = SessionId(val)
@@ -168,33 +159,6 @@ fn home_page(req, user, db) -> Response {
       |> layout.with_layout(user)
       |> to_response(200)
       |> wisp.set_header("NEEDS_AUTH", "Hello")
-  }
-}
-
-fn definitions_page(req: Request, user: User, database: DB) -> Response {
-  use <- wisp.require_method(req, Get)
-  case request.is_htmx(req) && !request.is_boosted(req) {
-    False -> {
-      definitions.full_page()
-      |> layout.with_layout(user)
-      |> to_response(200)
-    }
-    True -> {
-      case definition_db.get_all(user.email, database) {
-        Ok(defs) -> {
-          defs
-          |> definitions.definitions_table
-          |> my_list.singleton
-          |> to_response(200)
-        }
-        Error(e) -> {
-          io.debug(e)
-          error_toast(
-            "There was an issue fetching definitions, please refresh the page and try again.",
-          )
-        }
-      }
-    }
   }
 }
 
@@ -337,63 +301,6 @@ pub fn home_content(
   }
 }
 
-fn definition(
-  req: Request,
-  user: User,
-  db: DB,
-  id: Option(Id(Definition)),
-) -> Response {
-  case req.method {
-    Get -> {
-      let definition = case id {
-        Some(i) -> {
-          definition_db.get_one(i, db)
-        }
-        None ->
-          Ok(Definition(
-            id.new_id(),
-            "",
-            0.0,
-            OneTime,
-            birl.now()
-              |> birl.get_day,
-            None,
-            False,
-          ))
-      }
-
-      case definition {
-        Ok(def) ->
-          definitions.render_definition_modal(def)
-          |> my_list.singleton
-          |> to_response(200)
-          |> wisp.set_header("HX-Trigger-After-Settle", "showDefinitionsModal")
-        Error(_) ->
-          error_toast(
-            "There was an issue fetching the definition.  Please try again.",
-          )
-      }
-    }
-    Post -> {
-      use form <- wisp.require_form(req)
-      case hydrate_definition(form) {
-        Ok(definition) ->
-          case definition_db.upsert_definition(definition, user.email, db) {
-            Ok(_) ->
-              wisp.no_content()
-              |> wisp.set_header("HX-Trigger", "hideDefinitionsModal, reload")
-            Error(_) ->
-              error_toast(
-                "There was an issue saving the definition, please try again.",
-              )
-          }
-        Error(_) -> error_toast("Bad request, please check your formatting.")
-      }
-    }
-    _ -> error_toast("Something went wrong, please try again.")
-  }
-}
-
 pub fn archive(req, user, db, action) {
   use <- wisp.require_method(req, Post)
   use form_data <- wisp.require_form(req)
@@ -407,96 +314,6 @@ pub fn archive(req, user, db, action) {
     }
     Error(_err) -> error_toast("Bad request, please check your formatting.")
   }
-}
-
-fn error_toast(msg) {
-  layout.add_toast(html.span([], [html.text(msg)]), layout.Error)
-  |> my_list.singleton
-  |> to_response(200)
-  |> wisp.set_header("HX-Reswap", "none")
-}
-
-fn hydrate_definition(form: wisp.FormData) {
-  use id <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "id" {
-        True -> Ok(id.wrap(kvp.1))
-        False -> Error(Nil)
-      }
-    }),
-  )
-
-  use description <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "description" {
-        True -> Ok(kvp.1)
-        False -> Error(Nil)
-      }
-    }),
-  )
-
-  use amount <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "amount" {
-        True -> decoders.parse_float(kvp.1)
-        False -> Error(Nil)
-      }
-    }),
-  )
-
-  use frequency <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "frequency" {
-        True -> definition.parse_frequency(kvp.1)
-        False -> Error(Nil)
-      }
-    }),
-  )
-
-  use start_date <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "start_date" {
-        True -> decoders.parse_day(kvp.1)
-        False -> Error(Nil)
-      }
-    }),
-  )
-
-  use end_date <- result.try(
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "end_date", kvp.1 {
-        True, "" -> Ok(None)
-        True, d -> decoders.parse_day(d) |> result.map(Some)
-        False, _ -> Error(Nil)
-      }
-    }),
-  )
-
-  let is_automatic_withdrawal =
-    form.values
-    |> list.find_map(fn(kvp) {
-      case kvp.0 == "is_automatic_withdrawal", kvp.1 {
-        True, "on" -> Ok(True)
-        _, _ -> Error(Nil)
-      }
-    })
-    |> result.unwrap(False)
-
-  Ok(Definition(
-    id,
-    description,
-    amount,
-    frequency,
-    start_date,
-    end_date,
-    is_automatic_withdrawal,
-  ))
 }
 
 fn hydrate_item(form: wisp.FormData) {
