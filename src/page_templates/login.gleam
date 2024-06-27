@@ -7,89 +7,108 @@ import types/forms
 
 pub fn full_page() {
   html.div(
+    [attribute.class("bg-base-200 min-h-screen min-w-screen flex flex-col")],
     [
-      attribute.class("hero bg-base-200 min-h-screen"),
-      hx.hyper_script(
-        "on hideRegistrationModal from body call registration_modal.close() end
-         on showRegistrationModal from body call registration_modal.showModal() end",
-      ),
-    ],
-    [
-      html.div([attribute.class("hero-content flex-col lg:flex-row-reverse")], [
-        html.div([attribute.class("text-center lg:text-left")], [
-          html.h1([attribute.class("text-5xl font-bold")], [
-            html.text("Login now!"),
-          ]),
-          html.p([attribute.class("pt-6")], [
-            html.text(
-              "Please log in to the Budget system to see what you have upcoming and to make any changes!",
-            ),
-          ]),
-          html.p([attribute.class("py-2")], [
-            html.text("Don't have an account? No problem! Sign up here!"),
-          ]),
-          html.button(
-            [
-              hx.get("/register"),
-              hx.target(hx.CssSelector("#registration_modal_form")),
-              hx.swap(hx.OuterHTML, None),
-              attribute.class("btn btn-primary"),
-            ],
-            [html.text("Sign Up")],
+      html.div(
+        [
+          attribute.class(
+            "w-screen bg-base-400 min-h-[200px] flex justify-center items-center",
           ),
-        ]),
-        html.div(
-          [
-            attribute.class(
-              "card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl",
-            ),
-          ],
-          [
-            html.form([attribute.class("card-body"), hx.post("/login")], [
-              html.div([attribute.class("form-control")], [
-                html.label([attribute.class("label")], [
-                  html.span([attribute.class("label-text")], [
-                    html.text("Email"),
-                  ]),
+        ],
+        [
+          html.h1([attribute.class("text-8xl font-bold")], [html.text("Budget")]),
+        ],
+      ),
+      html.div(
+        [
+          attribute.class("hero grow h-full"),
+          hx.hyper_script(
+            "on hideRegistrationModal from body call registration_modal.close() end
+         on showRegistrationModal from body call registration_modal.showModal() end",
+          ),
+        ],
+        [
+          html.div(
+            [attribute.class("hero-content flex-col lg:flex-row-reverse")],
+            [
+              html.div([attribute.class("text-center lg:text-left")], [
+                html.h1([attribute.class("text-5xl font-bold")], [
+                  html.text("Login now!"),
                 ]),
-                html.input([
-                  attribute.type_("email"),
-                  attribute.placeholder("email"),
-                  attribute.class("input input-bordered"),
-                  attribute.name("email"),
-                  attribute.required(True),
-                  attribute.autofocus(True),
+                html.p([attribute.class("pt-6")], [
+                  html.text(
+                    "Please log in to the Budget system to see what you have upcoming and to make any changes!",
+                  ),
                 ]),
+                html.p([attribute.class("py-2")], [
+                  html.text("Don't have an account? No problem! Sign up here!"),
+                ]),
+                html.button(
+                  [
+                    hx.get("/register"),
+                    hx.target(hx.CssSelector("#registration_modal_form")),
+                    hx.swap(hx.OuterHTML, None),
+                    attribute.class("btn btn-primary"),
+                  ],
+                  [html.text("Sign Up")],
+                ),
               ]),
-              html.div([attribute.class("form-control")], [
-                html.label([attribute.class("label")], [
-                  html.span([attribute.class("label-text")], [
-                    html.text("Password"),
+              html.div(
+                [
+                  attribute.class(
+                    "card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl",
+                  ),
+                ],
+                [
+                  html.form([attribute.class("card-body"), hx.post("/login")], [
+                    html.div([attribute.class("form-control")], [
+                      html.label([attribute.class("label")], [
+                        html.span([attribute.class("label-text")], [
+                          html.text("Email"),
+                        ]),
+                      ]),
+                      html.input([
+                        attribute.type_("email"),
+                        attribute.placeholder("email"),
+                        attribute.class("input input-bordered"),
+                        attribute.name("email"),
+                        attribute.required(True),
+                        attribute.autofocus(True),
+                      ]),
+                    ]),
+                    html.div([attribute.class("form-control")], [
+                      html.label([attribute.class("label")], [
+                        html.span([attribute.class("label-text")], [
+                          html.text("Password"),
+                        ]),
+                      ]),
+                      html.input([
+                        attribute.type_("password"),
+                        attribute.placeholder("password"),
+                        attribute.class("input input-bordered"),
+                        attribute.name("password"),
+                        attribute.required(True),
+                      ]),
+                      html.label([attribute.class("label")], [
+                        html.a(
+                          [attribute.class("label-text-alt link link-hover")],
+                          [html.text("Forgot password?")],
+                        ),
+                      ]),
+                    ]),
+                    html.div([attribute.class("form-control mt-6")], [
+                      html.button([attribute.class("btn btn-primary")], [
+                        html.text("Login"),
+                      ]),
+                    ]),
                   ]),
-                ]),
-                html.input([
-                  attribute.type_("password"),
-                  attribute.placeholder("password"),
-                  attribute.class("input input-bordered"),
-                  attribute.name("password"),
-                  attribute.required(True),
-                ]),
-                html.label([attribute.class("label")], [
-                  html.a([attribute.class("label-text-alt link link-hover")], [
-                    html.text("Forgot password?"),
-                  ]),
-                ]),
-              ]),
-              html.div([attribute.class("form-control mt-6")], [
-                html.button([attribute.class("btn btn-primary")], [
-                  html.text("Login"),
-                ]),
-              ]),
-            ]),
-          ],
-        ),
-      ]),
-      render_registration_modal(),
+                ],
+              ),
+            ],
+          ),
+          render_registration_modal(),
+        ],
+      ),
     ],
   )
 }
