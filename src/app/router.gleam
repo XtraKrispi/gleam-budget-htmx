@@ -74,19 +74,26 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
       // TODO: Clean this up
       requires_auth(req, ctx.db, fn(req, user) { home_page(req, user, ctx.db) })
     ["login"] -> login_page(req, ctx.db)
-    ["admin", "definitions"] -> definitions_page(req, ctx.db)
+    ["admin", "definitions"] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        definitions_page(req, user, ctx.db)
+      })
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
     ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
-    ["archive"] -> archive_page(req, ctx.db)
+    ["archive"] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        archive_page(req, user, ctx.db)
+      })
     ["archive", "skip"] -> archive(req, ctx.db, Skipped)
     ["archive", "pay"] -> archive(req, ctx.db, Paid)
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
     ["register"] -> register(req, ctx.db)
+    ["session"] -> destroy_session(req, ctx.db)
     _ -> wisp.not_found()
   }
 }
 
-fn home_page(req, _user, db) -> Response {
+fn home_page(req, user, db) -> Response {
   let query_strings = wisp.get_query(req)
   let end_date =
     query_strings
@@ -108,18 +115,18 @@ fn home_page(req, _user, db) -> Response {
     True -> home_content(end_date, amount_in_bank, amount_left_over, db)
     False ->
       home.full_page(end_date, amount_in_bank, amount_left_over)
-      |> layout.with_layout
+      |> layout.with_layout(user)
       |> to_response(200)
       |> wisp.set_header("NEEDS_AUTH", "Hello")
   }
 }
 
-fn definitions_page(req: Request, database: DB) -> Response {
+fn definitions_page(req: Request, user: User, database: DB) -> Response {
   use <- wisp.require_method(req, Get)
   case request.is_htmx(req) && !request.is_boosted(req) {
     False -> {
       definitions.full_page()
-      |> layout.with_layout
+      |> layout.with_layout(user)
       |> to_response(200)
     }
     True -> {
@@ -140,7 +147,7 @@ fn definitions_page(req: Request, database: DB) -> Response {
   }
 }
 
-fn archive_page(req: Request, db: DB) -> Response {
+fn archive_page(req: Request, user: User, db: DB) -> Response {
   case request.is_htmx(req) && !request.is_boosted(req) {
     True -> {
       let archive_items = archive_db.get_all(db)
@@ -165,7 +172,7 @@ fn archive_page(req: Request, db: DB) -> Response {
     }
     False ->
       archive_page.full_page()
-      |> layout.with_layout
+      |> layout.with_layout(user)
       |> to_response(200)
   }
 }
@@ -205,7 +212,7 @@ pub fn login_page(req: Request, db: DB) -> Response {
           users_db.get_by_email(e, db) |> result.replace_error(Nil),
         )
 
-        Ok(password.validate_password(p, user.password_hash))
+        Ok(#(user, password.validate_password(p, user.password_hash)))
       }
 
       let error_response =
@@ -219,7 +226,25 @@ pub fn login_page(req: Request, db: DB) -> Response {
         |> to_response(200)
         |> wisp.set_header("HX-Reswap", "none")
       case is_validated {
-        Ok(True) -> todo
+        Ok(#(user, True)) -> {
+          // Create a session
+          case sessions_db.create_session(user.email, db) {
+            Ok(SessionId(session_id)) -> {
+              wisp.no_content()
+              |> wisp.set_cookie(
+                req,
+                "AUTH_COOKIE",
+                session_id,
+                wisp.Signed,
+                1200,
+              )
+              |> wisp.set_header("HX-Redirect", "/")
+            }
+            Error(_) -> {
+              error_response
+            }
+          }
+        }
         // Log in
         _ -> error_response
       }
@@ -623,4 +648,17 @@ fn validate_password(pass: String) {
     True -> []
     False -> ["Password does not meet the requirements"]
   }
+}
+
+fn destroy_session(req, db) {
+  use <- wisp.require_method(req, http.Delete)
+
+  case wisp.get_cookie(req, "AUTH_COOKIE", wisp.Signed) {
+    Ok(val) -> {
+      let _ = sessions_db.destroy_session(SessionId(val), db)
+      wisp.no_content()
+    }
+    Error(_) -> wisp.no_content()
+  }
+  |> wisp.set_header("HX-Redirect", "/")
 }

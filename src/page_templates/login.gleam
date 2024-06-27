@@ -45,7 +45,7 @@ pub fn full_page() {
             ),
           ],
           [
-            html.form([attribute.class("card-body")], [
+            html.form([attribute.class("card-body"), hx.post("/login")], [
               html.div([attribute.class("form-control")], [
                 html.label([attribute.class("label")], [
                   html.span([attribute.class("label-text")], [
@@ -56,6 +56,7 @@ pub fn full_page() {
                   attribute.type_("email"),
                   attribute.placeholder("email"),
                   attribute.class("input input-bordered"),
+                  attribute.name("email"),
                   attribute.required(True),
                   attribute.autofocus(True),
                 ]),
@@ -67,9 +68,10 @@ pub fn full_page() {
                   ]),
                 ]),
                 html.input([
-                  attribute.type_("email"),
-                  attribute.placeholder("email"),
+                  attribute.type_("password"),
+                  attribute.placeholder("password"),
                   attribute.class("input input-bordered"),
+                  attribute.name("password"),
                   attribute.required(True),
                 ]),
                 html.label([attribute.class("label")], [

@@ -4,6 +4,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/svg
 import lustre_hx as hx
+import types/user.{type User}
 import utils/list as my_list
 
 pub fn with_page_shell(content: List(Element(t))) -> Element(t) {
@@ -33,7 +34,7 @@ pub fn with_page_shell(content: List(Element(t))) -> Element(t) {
   ])
 }
 
-pub fn with_layout(content: Element(t)) -> List(Element(t)) {
+pub fn with_layout(content: Element(t), _user: User) -> List(Element(t)) {
   let menu_items = [
     html.li([], [html.a([attribute.href("/")], [html.text("Home")])]),
     html.li([], [
@@ -85,6 +86,11 @@ pub fn with_layout(content: Element(t)) -> List(Element(t)) {
         ]),
         html.div([attribute.class("hidden lg:flex")], [
           html.ul([attribute.class("menu menu-horizontal px-1")], menu_items),
+        ]),
+      ]),
+      html.div([attribute.class("navbar-end")], [
+        html.ul([attribute.class("menu menu-horizontal px-1")], [
+          html.li([], [html.a([hx.delete("/session")], [html.text("Log Out")])]),
         ]),
       ]),
     ]),
