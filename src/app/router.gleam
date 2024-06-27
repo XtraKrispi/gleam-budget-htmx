@@ -8,7 +8,6 @@ import db/definitions as definition_db
 import db/sessions as sessions_db
 import db/users as users_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regex
@@ -44,13 +43,13 @@ fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
 }
 
 fn validate_cookie(val: String, db: DB) -> Result(User, Error) {
-  sessions_db.get_user_for_session(SessionId(val), db)
+  users_db.get_user_for_session(SessionId(val), db)
 }
 
 pub fn requires_auth(
   req: Request,
   db: DB,
-  handler: fn(Request) -> Response,
+  handler: fn(Request, User) -> Response,
 ) -> Response {
   {
     use cookie_val <- result.try(wisp.get_cookie(
@@ -59,11 +58,11 @@ pub fn requires_auth(
       wisp.Signed,
     ))
 
-    use _ <- result.try(
+    use user <- result.try(
       validate_cookie(cookie_val, db) |> result.replace_error(Nil),
     )
 
-    Ok(handler(req))
+    Ok(handler(req, user))
   }
   |> result.unwrap(wisp.redirect("/login"))
 }
@@ -71,7 +70,9 @@ pub fn requires_auth(
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
-    [] -> requires_auth(req, ctx.db, home_page(_, ctx.db))
+    [] ->
+      // TODO: Clean this up
+      requires_auth(req, ctx.db, fn(req, user) { home_page(req, user, ctx.db) })
     ["login"] -> login_page(req, ctx.db)
     ["admin", "definitions"] -> definitions_page(req, ctx.db)
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
@@ -85,7 +86,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   }
 }
 
-fn home_page(req, db) -> Response {
+fn home_page(req, _user, db) -> Response {
   let query_strings = wisp.get_query(req)
   let end_date =
     query_strings

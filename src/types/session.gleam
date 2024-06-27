@@ -1,3 +1,3 @@
 pub type SessionId {
-  SessionId(String)
+  SessionId(id: String)
 }

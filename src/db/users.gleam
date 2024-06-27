@@ -2,6 +2,7 @@ import based.{type DB}
 import gleam/dynamic.{type DecodeErrors, type Dynamic}
 import gleam/result
 import types/error
+import types/session
 import types/user.{type User, User}
 import utils/password
 
@@ -36,6 +37,22 @@ pub fn insert_user(user: User, db: DB) {
   |> based.execute(db)
   |> result.map_error(error.DbError)
   |> result.replace(Nil)
+}
+
+pub fn get_user_for_session(
+  session_id: session.SessionId,
+  db: DB,
+) -> Result(User, error.Error) {
+  "SELECT u.email
+        , u.name
+        , u.password_hash
+   FROM users u 
+   JOIN sessions s ON u.id = s.user_id
+   WHERE s.session_id = $1;"
+  |> based.new_query
+  |> based.with_values([based.string(session_id.id)])
+  |> based.one(db, user_decoder)
+  |> result.map_error(error.DbError)
 }
 
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {
