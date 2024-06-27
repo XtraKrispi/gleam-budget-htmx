@@ -8,8 +8,10 @@ import db/definitions as definition_db
 import db/sessions as sessions_db
 import db/users as users_db
 import gleam/http.{Get, Post}
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/order
 import gleam/regex
 import gleam/result
 import gleam/string
@@ -24,12 +26,12 @@ import page_templates/home
 import page_templates/login as login_page
 import types/archived_item.{ArchivedItem, Paid, Skipped}
 import types/definition.{type Definition, Definition, OneTime}
-import types/error.{type Error}
+import types/error.{type Error, SessionError}
 import types/forms
 import types/id.{type Id}
 import types/item.{type Item, Item}
-import types/session.{SessionId}
-import types/user.{type User, User}
+import types/session.{Session, SessionId}
+import types/user.{type User, Email, User}
 import utils/decoders
 import utils/list as my_list
 import utils/password
@@ -43,7 +45,39 @@ fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
 }
 
 fn validate_cookie(val: String, db: DB) -> Result(User, Error) {
-  users_db.get_user_for_session(SessionId(val), db)
+  let session_id = SessionId(val)
+  io.debug(session_id)
+  case users_db.get_user_for_session(session_id, db) {
+    Ok(#(user, expiration_time)) -> {
+      case birl.compare(expiration_time, birl.now()) {
+        order.Gt | order.Eq -> {
+          let result = case
+            duration.compare(
+              birl.difference(expiration_time, birl.now()),
+              duration.minutes(10),
+            )
+          {
+            order.Lt | order.Eq ->
+              sessions_db.update_session(
+                session_id,
+                birl.now() |> birl.add(duration.minutes(20)),
+                db,
+              )
+            _ -> Ok(Nil)
+          }
+          case result {
+            Ok(_) -> Ok(user)
+            Error(e) -> Error(e)
+          }
+        }
+        _ -> Error(SessionError)
+      }
+    }
+    Error(e) -> {
+      io.debug(e)
+      Error(e)
+    }
+  }
 }
 
 pub fn requires_auth(
@@ -62,7 +96,10 @@ pub fn requires_auth(
       validate_cookie(cookie_val, db) |> result.replace_error(Nil),
     )
 
-    Ok(handler(req, user))
+    Ok(
+      handler(req, user)
+      |> wisp.set_cookie(req, "AUTH_COOKIE", cookie_val, wisp.Signed, 1200),
+    )
   }
   |> result.unwrap(wisp.redirect("/login"))
 }
@@ -78,17 +115,30 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
       requires_auth(req, ctx.db, fn(req, user) {
         definitions_page(req, user, ctx.db)
       })
-    ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
-    ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
+    ["admin", "definitions", "new"] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        definition(req, user, ctx.db, None)
+      })
+    ["admin", "definitions", id] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        definition(req, user, ctx.db, Some(id.wrap(id)))
+      })
     ["archive"] ->
       requires_auth(req, ctx.db, fn(req, user) {
         archive_page(req, user, ctx.db)
       })
-    ["archive", "skip"] -> archive(req, ctx.db, Skipped)
-    ["archive", "pay"] -> archive(req, ctx.db, Paid)
+    ["archive", "skip"] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        archive(req, user.email, ctx.db, Skipped)
+      })
+    ["archive", "pay"] ->
+      requires_auth(req, ctx.db, fn(req, user) {
+        archive(req, user.email, ctx.db, Paid)
+      })
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
     ["register"] -> register(req, ctx.db)
-    ["session"] -> destroy_session(req, ctx.db)
+    ["session"] ->
+      requires_auth(req, ctx.db, fn(req, _user) { destroy_session(req, ctx.db) })
     _ -> wisp.not_found()
   }
 }
@@ -112,7 +162,7 @@ fn home_page(req, user, db) -> Response {
     |> result.try(fn(qs) { decoders.parse_float(qs.1) })
 
   case request.is_htmx(req) && !request.is_boosted(req) {
-    True -> home_content(end_date, amount_in_bank, amount_left_over, db)
+    True -> home_content(user, end_date, amount_in_bank, amount_left_over, db)
     False ->
       home.full_page(end_date, amount_in_bank, amount_left_over)
       |> layout.with_layout(user)
@@ -130,14 +180,15 @@ fn definitions_page(req: Request, user: User, database: DB) -> Response {
       |> to_response(200)
     }
     True -> {
-      case definition_db.get_all(database) {
+      case definition_db.get_all(user.email, database) {
         Ok(defs) -> {
           defs
           |> definitions.definitions_table
           |> my_list.singleton
           |> to_response(200)
         }
-        Error(_e) -> {
+        Error(e) -> {
+          io.debug(e)
           error_toast(
             "There was an issue fetching definitions, please refresh the page and try again.",
           )
@@ -150,7 +201,7 @@ fn definitions_page(req: Request, user: User, database: DB) -> Response {
 fn archive_page(req: Request, user: User, db: DB) -> Response {
   case request.is_htmx(req) && !request.is_boosted(req) {
     True -> {
-      let archive_items = archive_db.get_all(db)
+      let archive_items = archive_db.get_all(user.email, db)
       case archive_items {
         Ok(items) ->
           archive_page.items(items)
@@ -186,6 +237,7 @@ pub fn login_page(req: Request, db: DB) -> Response {
       |> my_list.singleton
       |> to_response(200)
     http.Post -> {
+      // TODO: Login email is case sensitive
       use form_data <- wisp.require_form(req)
       let is_validated = {
         use e <- result.try(
@@ -228,8 +280,9 @@ pub fn login_page(req: Request, db: DB) -> Response {
       case is_validated {
         Ok(#(user, True)) -> {
           // Create a session
-          case sessions_db.create_session(user.email, db) {
-            Ok(SessionId(session_id)) -> {
+          let expiration_time = birl.now() |> birl.add(duration.minutes(20))
+          case sessions_db.create_session(user.email, expiration_time, db) {
+            Ok(Session(SessionId(session_id), _)) -> {
               wisp.no_content()
               |> wisp.set_cookie(
                 req,
@@ -254,13 +307,14 @@ pub fn login_page(req: Request, db: DB) -> Response {
 }
 
 pub fn home_content(
+  user: User,
   end_date,
   amount_in_bank: Result(Float, Nil),
   amount_left_over: Result(Float, Nil),
   db: DB,
 ) -> Response {
-  let definitions = definition_db.get_all(db)
-  let archive = archive_db.get_all(db)
+  let definitions = definition_db.get_all(user.email, db)
+  let archive = archive_db.get_all(user.email, db)
 
   case definitions, archive {
     Ok(defs), Ok(a) -> {
@@ -283,7 +337,12 @@ pub fn home_content(
   }
 }
 
-fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
+fn definition(
+  req: Request,
+  user: User,
+  db: DB,
+  id: Option(Id(Definition)),
+) -> Response {
   case req.method {
     Get -> {
       let definition = case id {
@@ -319,7 +378,7 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
       use form <- wisp.require_form(req)
       case hydrate_definition(form) {
         Ok(definition) ->
-          case definition_db.upsert_definition(definition, db) {
+          case definition_db.upsert_definition(definition, user.email, db) {
             Ok(_) ->
               wisp.no_content()
               |> wisp.set_header("HX-Trigger", "hideDefinitionsModal, reload")
@@ -335,12 +394,12 @@ fn definition(req: Request, db: DB, id: Option(Id(Definition))) -> Response {
   }
 }
 
-pub fn archive(req, db, action) {
+pub fn archive(req, user, db, action) {
   use <- wisp.require_method(req, Post)
   use form_data <- wisp.require_form(req)
   case hydrate_item(form_data) {
     Ok(item) -> {
-      case item |> convert_to_archive(action) |> archive_db.insert(db) {
+      case item |> convert_to_archive(action) |> archive_db.insert(user, db) {
         Ok(_) -> wisp.no_content() |> wisp.set_header("HX-Trigger", "reload")
         Error(_err) ->
           error_toast("Could not move to the archive, please try again.")
@@ -580,7 +639,7 @@ pub fn register(req: Request, db: DB) {
               case
                 users_db.insert_user(
                   User(
-                    f.email.value,
+                    Email(f.email.value),
                     password.create_password(f.password.value),
                     f.name,
                   ),
@@ -657,6 +716,7 @@ fn destroy_session(req, db) {
     Ok(val) -> {
       let _ = sessions_db.destroy_session(SessionId(val), db)
       wisp.no_content()
+      |> wisp.set_cookie(req, "AUTH_COOKIE", val, wisp.Signed, -100)
     }
     Error(_) -> wisp.no_content()
   }

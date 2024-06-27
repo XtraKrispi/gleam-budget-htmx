@@ -35,7 +35,7 @@ pub fn main() {
     |> based.execute(db)
 
   let assert Ok(_) =
-    "CREATE TABLE IF NOT EXISTS sessions(session_id TEXT PRIMARY KEY, user_id INTEGER);"
+    "CREATE TABLE IF NOT EXISTS sessions(session_id TEXT PRIMARY KEY, user_id INTEGER, expiration_time TEXT);"
     |> based.new_query
     |> based.execute(db)
 

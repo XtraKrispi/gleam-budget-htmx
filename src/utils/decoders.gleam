@@ -1,4 +1,4 @@
-import birl.{type Day, Day}
+import birl.{type Day, type Time, Day}
 import gleam/dynamic.{type DecodeErrors, type Decoder, type Dynamic, DecodeError}
 import gleam/float
 import gleam/int
@@ -37,11 +37,22 @@ pub fn day_decoder(dyn: Dynamic) -> Result(Day, DecodeErrors) {
   use f_str <- result.try(dynamic.string(dyn))
   use f <- result.try(
     parse_day(f_str)
-    |> result.map_error(fn(_) {
-      [DecodeError(expected: "day", found: f_str, path: ["day"])]
-    }),
+    |> result.replace_error([
+      DecodeError(expected: "day", found: f_str, path: ["day"]),
+    ]),
   )
   Ok(f)
+}
+
+pub fn time_decoder(dyn: Dynamic) -> Result(Time, DecodeErrors) {
+  use t_str <- result.try(dynamic.string(dyn))
+  use t <- result.try(
+    birl.parse(t_str)
+    |> result.replace_error([
+      DecodeError(expected: "time", found: t_str, path: ["time"]),
+    ]),
+  )
+  Ok(t)
 }
 
 pub fn parse_float(val: String) -> Result(Float, Nil) {

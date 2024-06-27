@@ -6,19 +6,23 @@ import gleam/result
 import types/definition.{type Definition, Definition}
 import types/error.{type Error, DbError, NotFoundError}
 import types/id.{type Id}
+import types/user.{type Email}
 import utils/decoders
 import utils/formatters
 
-pub fn get_all(db: DB) -> Result(List(Definition), Error) {
-  "SELECT identifier
-        , description
-        , amount
-        , frequency
-        , start_date
-        , end_date
-        , is_automatic_withdrawal
-   FROM definitions"
+pub fn get_all(email: Email, db: DB) -> Result(List(Definition), Error) {
+  "SELECT d.identifier
+        , d.description
+        , d.amount
+        , d.frequency
+        , d.start_date
+        , d.end_date
+        , d.is_automatic_withdrawal
+   FROM definitions d
+   JOIN users u ON d.user_id = u.id
+   WHERE u.email = $1;"
   |> based.new_query
+  |> based.with_values([based.string(email.val)])
   |> based.all(db, definition_decoder)
   |> result.map(fn(r) { r.rows })
   |> result.map_error(DbError)
@@ -43,24 +47,28 @@ pub fn get_one(id: Id(Definition), db: DB) -> Result(Definition, Error) {
   })
 }
 
-pub fn upsert_definition(definition: Definition, db: DB) -> Result(Nil, Error) {
+pub fn upsert_definition(
+  definition: Definition,
+  email: Email,
+  db: DB,
+) -> Result(Nil, Error) {
   use sql <- result.try(case get_one(definition.id, db) {
     Ok(_found) -> {
       Ok(
         "UPDATE definitions
-       SET  description = $1
+         SET  description = $1
            ,amount = $2
            ,frequency = $3
            ,start_date = $4
            ,end_date = $5
            ,is_automatic_withdrawal = $6
-       WHERE identifier = $7",
+         WHERE identifier = $7 AND user_id = $8",
       )
     }
     Error(NotFoundError) -> {
       Ok(
-        "INSERT INTO definitions(description, amount, frequency, start_date, end_date, is_automatic_withdrawal, identifier)
-       VALUES($1, $2, $3, $4, $5, $6, $7)",
+        "INSERT INTO definitions(description, amount, frequency, start_date, end_date, is_automatic_withdrawal, identifier, user_id)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
       )
     }
     Error(e) -> Error(e)
@@ -78,6 +86,7 @@ pub fn upsert_definition(definition: Definition, db: DB) -> Result(Nil, Error) {
       |> option.unwrap(based.null()),
     based.bool(definition.is_automatic_withdrawal),
     based.string(id.unwrap(definition.id)),
+    based.string(email.val),
   ])
   |> based.execute(db)
   |> result.map_error(DbError)

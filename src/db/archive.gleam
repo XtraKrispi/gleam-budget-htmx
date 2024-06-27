@@ -6,10 +6,11 @@ import types/archived_item.{
 }
 import types/error.{type Error, DbError}
 import types/id
+import types/user.{type Email}
 import utils/decoders
 import utils/formatters
 
-pub fn get_all(db: DB) -> Result(List(ArchivedItem), Error) {
+pub fn get_all(email: Email, db: DB) -> Result(List(ArchivedItem), Error) {
   "SELECT identifier
         , item_definition_identifier
         , description
@@ -17,22 +18,26 @@ pub fn get_all(db: DB) -> Result(List(ArchivedItem), Error) {
         , date
         , action_date
         , action
-   FROM archive"
+   FROM archive a
+   JOIN users u ON a.user_id = u.id
+   WHERE u.email = $1"
   |> based.new_query
+  |> based.with_values([based.string(email.val)])
   |> based.all(db, archive_decoder)
   |> result.map(fn(r) { r.rows })
   |> result.map_error(DbError)
 }
 
-pub fn insert(item: ArchivedItem, db: DB) -> Result(Nil, Error) {
+pub fn insert(item: ArchivedItem, email: Email, db: DB) -> Result(Nil, Error) {
   "INSERT INTO archive(identifier
         , item_definition_identifier
         , description
         , amount
         , date
         , action_date
-        , action)
-   VALUES($1, $2, $3, $4, $5, $6, $7)"
+        , action
+        , user_id)
+   VALUES($1, $2, $3, $4, $5, $6, $7, $8)"
   |> based.new_query
   |> based.with_values([
     based.string(id.unwrap(item.id)),
@@ -42,6 +47,7 @@ pub fn insert(item: ArchivedItem, db: DB) -> Result(Nil, Error) {
     based.string(formatters.format_date(item.date)),
     based.string(formatters.format_date(item.action_date)),
     based.string(encode_archive_action(item.action)),
+    based.string(email.val),
   ])
   |> based.execute(db)
   |> result.map_error(DbError)
