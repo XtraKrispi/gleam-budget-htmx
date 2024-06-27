@@ -34,6 +34,11 @@ pub fn main() {
     |> based.new_query
     |> based.execute(db)
 
+  let assert Ok(_) =
+    "CREATE TABLE IF NOT EXISTS sessions(session_id TEXT PRIMARY KEY, user_id INTEGER);"
+    |> based.new_query
+    |> based.execute(db)
+
   wisp.configure_logger()
   let secret_key_base = wisp.random_string(64)
 

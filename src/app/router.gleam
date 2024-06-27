@@ -5,6 +5,7 @@ import birl
 import birl/duration
 import db/archive as archive_db
 import db/definitions as definition_db
+import db/sessions as sessions_db
 import db/users as users_db
 import gleam/http.{Get, Post}
 import gleam/io
@@ -24,12 +25,15 @@ import page_templates/home
 import page_templates/login as login_page
 import types/archived_item.{ArchivedItem, Paid, Skipped}
 import types/definition.{type Definition, Definition, OneTime}
+import types/error.{type Error}
 import types/forms
 import types/id.{type Id}
 import types/item.{type Item, Item}
-import types/user.{User}
+import types/session.{SessionId}
+import types/user.{type User, User}
 import utils/decoders
 import utils/list as my_list
+import utils/password
 import wisp.{type Request, type Response}
 
 fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
@@ -39,11 +43,15 @@ fn to_response(elems: List(Element(t)), status_code: Int) -> Response {
   |> wisp.html_response(status_code)
 }
 
-fn validate_cookie(_val: String) -> Result(Nil, Nil) {
-  Ok(Nil)
+fn validate_cookie(val: String, db: DB) -> Result(User, Error) {
+  sessions_db.get_user_for_session(SessionId(val), db)
 }
 
-pub fn requires_auth(req: Request, handler: fn(Request) -> Response) -> Response {
+pub fn requires_auth(
+  req: Request,
+  db: DB,
+  handler: fn(Request) -> Response,
+) -> Response {
   {
     use cookie_val <- result.try(wisp.get_cookie(
       req,
@@ -51,18 +59,20 @@ pub fn requires_auth(req: Request, handler: fn(Request) -> Response) -> Response
       wisp.Signed,
     ))
 
-    use _ <- result.try(validate_cookie(cookie_val))
+    use _ <- result.try(
+      validate_cookie(cookie_val, db) |> result.replace_error(Nil),
+    )
 
     Ok(handler(req))
   }
-  |> result.unwrap(wisp.redirect("/archive"))
+  |> result.unwrap(wisp.redirect("/login"))
 }
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
-    [] -> home_page(req, ctx.db)
-    ["login"] -> login_page()
+    [] -> requires_auth(req, ctx.db, home_page(_, ctx.db))
+    ["login"] -> login_page(req, ctx.db)
     ["admin", "definitions"] -> definitions_page(req, ctx.db)
     ["admin", "definitions", "new"] -> definition(req, ctx.db, None)
     ["admin", "definitions", id] -> definition(req, ctx.db, Some(id.wrap(id)))
@@ -159,12 +169,62 @@ fn archive_page(req: Request, db: DB) -> Response {
   }
 }
 
-pub fn login_page() -> Response {
-  login_page.full_page()
-  |> my_list.singleton
-  |> layout.with_page_shell
-  |> my_list.singleton
-  |> to_response(200)
+pub fn login_page(req: Request, db: DB) -> Response {
+  case req.method {
+    http.Get ->
+      login_page.full_page()
+      |> my_list.singleton
+      |> layout.with_page_shell
+      |> my_list.singleton
+      |> to_response(200)
+    http.Post -> {
+      use form_data <- wisp.require_form(req)
+      let is_validated = {
+        use e <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "email" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          }),
+        )
+
+        use p <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "password" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          }),
+        )
+
+        use user <- result.try(
+          users_db.get_by_email(e, db) |> result.replace_error(Nil),
+        )
+
+        Ok(password.validate_password(p, user.password_hash))
+      }
+
+      let error_response =
+        layout.add_toast(
+          html.span([], [
+            html.text("There was a problem logging in, please try again."),
+          ]),
+          layout.Error,
+        )
+        |> my_list.singleton
+        |> to_response(200)
+        |> wisp.set_header("HX-Reswap", "none")
+      case is_validated {
+        Ok(True) -> todo
+        // Log in
+        _ -> error_response
+      }
+    }
+    _ -> wisp.not_found()
+  }
 }
 
 pub fn home_content(
@@ -495,7 +555,7 @@ pub fn register(req: Request, db: DB) {
                 users_db.insert_user(
                   User(
                     f.email.value,
-                    user.hash_password(f.password.value),
+                    password.create_password(f.password.value),
                     f.name,
                   ),
                   db,
