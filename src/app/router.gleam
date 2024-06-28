@@ -84,9 +84,7 @@ fn requires_auth(
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   use req <- web.middleware(req, ctx)
   case wisp.path_segments(req) {
-    [] ->
-      // TODO: Clean this up
-      requires_auth(req, ctx.db, home_page(req, _, ctx.db))
+    [] -> requires_auth(req, ctx.db, home_page(req, _, ctx.db))
     ["login"] -> login_page(req, ctx.db)
     ["admin", "definitions"] ->
       requires_auth(req, ctx.db, definitions_page(req, _, ctx.db))
