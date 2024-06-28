@@ -44,12 +44,16 @@ pub fn archive_page(req: Request, user: User, db: DB) -> Response {
   }
 }
 
-pub fn archive(req, user, db, action) {
+pub fn archive(req: Request, user: User, db: DB, action) {
   use <- wisp.require_method(req, Post)
   use form_data <- wisp.require_form(req)
   case hydrate_item(form_data) {
     Ok(item) -> {
-      case item |> convert_to_archive(action) |> archive_db.insert(user, db) {
+      case
+        item
+        |> convert_to_archive(action)
+        |> archive_db.insert(user.email, db)
+      {
         Ok(_) -> wisp.no_content() |> wisp.set_header("HX-Trigger", "reload")
         Error(_err) ->
           error_toast("Could not move to the archive, please try again.")

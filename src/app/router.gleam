@@ -60,7 +60,7 @@ fn validate_cookie(val: String, db: DB) -> Result(User, Error) {
 fn requires_auth(
   req: Request,
   db: DB,
-  handler: fn(Request, User) -> Response,
+  handler: fn(User) -> Response,
 ) -> Response {
   {
     use cookie_val <- result.try(wisp.get_cookie(
@@ -74,7 +74,7 @@ fn requires_auth(
     )
 
     Ok(
-      handler(req, user)
+      handler(user)
       |> wisp.set_cookie(req, "AUTH_COOKIE", cookie_val, wisp.Signed, 1200),
     )
   }
@@ -86,36 +86,23 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   case wisp.path_segments(req) {
     [] ->
       // TODO: Clean this up
-      requires_auth(req, ctx.db, fn(req, user) { home_page(req, user, ctx.db) })
+      requires_auth(req, ctx.db, home_page(req, _, ctx.db))
     ["login"] -> login_page(req, ctx.db)
     ["admin", "definitions"] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        definitions_page(req, user, ctx.db)
-      })
+      requires_auth(req, ctx.db, definitions_page(req, _, ctx.db))
     ["admin", "definitions", "new"] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        definition(req, user, ctx.db, None)
-      })
+      requires_auth(req, ctx.db, definition(req, _, ctx.db, None))
     ["admin", "definitions", id] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        definition(req, user, ctx.db, Some(id.wrap(id)))
-      })
-    ["archive"] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        archive_page(req, user, ctx.db)
-      })
+      requires_auth(req, ctx.db, definition(req, _, ctx.db, Some(id.wrap(id))))
+    ["archive"] -> requires_auth(req, ctx.db, archive_page(req, _, ctx.db))
     ["archive", "skip"] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        archive(req, user.email, ctx.db, Skipped)
-      })
+      requires_auth(req, ctx.db, archive(req, _, ctx.db, Skipped))
     ["archive", "pay"] ->
-      requires_auth(req, ctx.db, fn(req, user) {
-        archive(req, user.email, ctx.db, Paid)
-      })
+      requires_auth(req, ctx.db, archive(req, _, ctx.db, Paid))
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
     ["register"] -> register(req, ctx.db)
     ["session"] ->
-      requires_auth(req, ctx.db, fn(req, _user) { destroy_session(req, ctx.db) })
+      requires_auth(req, ctx.db, fn(_user) { destroy_session(req, ctx.db) })
     _ -> wisp.not_found()
   }
 }
