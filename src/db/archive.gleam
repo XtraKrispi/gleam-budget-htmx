@@ -37,7 +37,9 @@ pub fn insert(item: ArchivedItem, email: Email, db: DB) -> Result(Nil, Error) {
         , action_date
         , action
         , user_id)
-   VALUES($1, $2, $3, $4, $5, $6, $7, $8)"
+   SELECT $1, $2, $3, $4, $5, $6, $7, u.id
+   FROM users u
+   WHERE u.email = $8;"
   |> based.new_query
   |> based.with_values([
     based.string(id.unwrap(item.id)),

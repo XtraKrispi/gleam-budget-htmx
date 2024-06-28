@@ -9,7 +9,7 @@ import gleam/result
 import lustre/element/html
 import page_templates/login as login_page
 import types/forms
-import types/user.{Email, User}
+import types/user.{type Email, Email, User}
 import utils/list as my_list
 import utils/password
 import wisp.{type Request}
@@ -35,7 +35,7 @@ pub fn register(req: Request, db: DB) {
             }
           })
           |> result.map(fn(v) {
-            forms.InputWithValidation(v, validate_email(v, db))
+            forms.InputWithValidation(v, validate_email(Email(v), db))
           }),
         )
 
@@ -141,7 +141,7 @@ fn is_form_valid(form: forms.RegistrationForm) {
   && list.is_empty(form.password_confirm.errors)
 }
 
-fn validate_email(email: String, db: DB) {
+fn validate_email(email: Email, db: DB) {
   case users_db.get_by_email(email, db) {
     Ok(_) -> ["Email is already taken"]
     Error(_) -> []

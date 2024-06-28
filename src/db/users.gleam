@@ -2,9 +2,11 @@ import based.{type DB}
 import birl.{type Time}
 import gleam/dynamic.{type DecodeErrors, type Dynamic}
 import gleam/result
+import gleam/string
 import types/error
+import types/scratch.{type Scratch}
 import types/session
-import types/user.{type User, Email, User}
+import types/user.{type Email, type User, Email, User}
 import utils/decoders
 import utils/password
 
@@ -17,12 +19,12 @@ pub fn get_all(db: DB) {
   |> result.map_error(error.DbError)
 }
 
-pub fn get_by_email(email: String, db: DB) {
+pub fn get_by_email(email: Email, db: DB) {
   "SELECT email, password_hash, name
    FROM users
    WHERE email = $1;"
   |> based.new_query
-  |> based.with_values([based.string(email)])
+  |> based.with_values([based.string(string.lowercase(email.val))])
   |> based.one(db, user_decoder)
   |> result.map_error(error.DbError)
 }
@@ -32,7 +34,7 @@ pub fn insert_user(user: User, db: DB) {
     VALUES($1, $2, $3, null)"
   |> based.new_query
   |> based.with_values([
-    based.string(user.email.val),
+    based.string(string.lowercase(user.email.val)),
     based.string(user.name),
     based.string(password.unwrap_password(user.password_hash)),
   ])
@@ -63,6 +65,10 @@ pub fn get_user_for_session(
     ),
   )
   |> result.map_error(error.DbError)
+}
+
+pub fn save_user_scratch(email: Email, scratch: Scratch, db: DB) {
+  todo
 }
 
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {

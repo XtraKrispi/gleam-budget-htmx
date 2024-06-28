@@ -11,6 +11,7 @@ import gleam/result
 import lustre/element/html
 import page_templates/login as login_page
 import types/session.{Session, SessionId}
+import types/user.{Email}
 import utils/list as my_list
 import utils/password
 import wisp.{type Request, type Response}
@@ -48,7 +49,7 @@ pub fn login_page(req: Request, db: DB) -> Response {
         )
 
         use user <- result.try(
-          users_db.get_by_email(e, db) |> result.replace_error(Nil),
+          users_db.get_by_email(Email(e), db) |> result.replace_error(Nil),
         )
 
         Ok(#(user, password.validate_password(p, user.password_hash)))

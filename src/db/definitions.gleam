@@ -55,20 +55,24 @@ pub fn upsert_definition(
   use sql <- result.try(case get_one(definition.id, db) {
     Ok(_found) -> {
       Ok(
-        "UPDATE definitions
-         SET  description = $1
+        "
+        UPDATE definitions
+        SET description = $1
            ,amount = $2
            ,frequency = $3
            ,start_date = $4
            ,end_date = $5
            ,is_automatic_withdrawal = $6
-         WHERE identifier = $7 AND user_id = $8",
+        WHERE identifier = $7 AND user_id = (SELECT u.id FROM users WHERE email = $8);
+        ",
       )
     }
     Error(NotFoundError) -> {
       Ok(
         "INSERT INTO definitions(description, amount, frequency, start_date, end_date, is_automatic_withdrawal, identifier, user_id)
-       VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
+         SELECT $1,$2, $3, $4, $5, $6, $7, u.id
+         FROM users u
+         WHERE email = $8;",
       )
     }
     Error(e) -> Error(e)
