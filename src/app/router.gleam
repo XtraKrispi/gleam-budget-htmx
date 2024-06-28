@@ -14,6 +14,7 @@ import gleam/http
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
+import htmx/request
 import lustre/element/html
 import types/archived_item.{Paid, Skipped}
 import types/error.{type Error, SessionError}
@@ -78,7 +79,10 @@ fn requires_auth(
       |> wisp.set_cookie(req, "AUTH_COOKIE", cookie_val, wisp.Signed, 1200),
     )
   }
-  |> result.unwrap(wisp.redirect("/login"))
+  |> result.unwrap(case request.is_htmx(req) {
+    True -> wisp.no_content() |> wisp.set_header("HX-Location", "/login")
+    False -> wisp.redirect("/login")
+  })
 }
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
