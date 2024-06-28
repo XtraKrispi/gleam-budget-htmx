@@ -6,6 +6,7 @@ import gleam/http
 import gleam/list
 import gleam/regex
 import gleam/result
+import gleam/string
 import lustre/element/html
 import page_templates/login as login_page
 import types/forms
@@ -89,7 +90,7 @@ pub fn register(req: Request, db: DB) {
               case
                 users_db.insert_user(
                   User(
-                    Email(f.email.value),
+                    Email(string.lowercase(f.email.value)),
                     password.create_password(f.password.value),
                     f.name,
                   ),

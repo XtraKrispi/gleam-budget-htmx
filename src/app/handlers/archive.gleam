@@ -4,7 +4,6 @@ import based.{type DB}
 import birl
 import db/archive as archive_db
 import gleam/http.{Post}
-import gleam/io
 import htmx/request
 import lustre/element/html
 import page_templates/archive as archive_page
@@ -48,10 +47,8 @@ pub fn archive_page(req: Request, user: User, db: DB) -> Response {
 pub fn archive(req: Request, user: User, db: DB, action) {
   use <- wisp.require_method(req, Post)
   use form_data <- wisp.require_form(req)
-  io.debug(form_data)
   case hydrate_item(form_data) {
     Ok(item) -> {
-      io.debug("hydrated")
       case
         item
         |> convert_to_archive(action)

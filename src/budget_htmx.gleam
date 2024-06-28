@@ -40,7 +40,7 @@ pub fn main() {
     |> based.execute(db)
 
   let assert Ok(_) =
-    "CREATE TABLE IF NOT EXISTS scratch(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, end_date TEXT, amount_in_bank REAL, amount_left_over REAL);"
+    "CREATE TABLE IF NOT EXISTS scratch(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, end_date TEXT, amount_in_bank REAL, amount_left_over REAL);"
     |> based.new_query
     |> based.execute(db)
 

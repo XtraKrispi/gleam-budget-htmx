@@ -1,6 +1,7 @@
 import based.{type DB}
 import birl.{type Time}
 import gleam/result
+import gleam/string
 import gluid
 import types/error.{type Error}
 import types/session.{type Session, type SessionId, Session, SessionId}
@@ -20,7 +21,7 @@ pub fn create_session(
   |> based.with_values([
     based.string(session_id),
     based.string(birl.to_iso8601(expiration_time)),
-    based.string(email.val),
+    based.string(string.lowercase(email.val)),
   ])
   |> based.execute(db)
   |> result.map_error(error.DbError)

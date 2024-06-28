@@ -1,6 +1,7 @@
 import based.{type DB}
 import gleam/dynamic.{type DecodeErrors, type Dynamic}
 import gleam/result
+import gleam/string
 import types/archived_item.{
   type ArchiveAction, type ArchivedItem, ArchivedItem, Paid, Skipped,
 }
@@ -22,7 +23,7 @@ pub fn get_all(email: Email, db: DB) -> Result(List(ArchivedItem), Error) {
    JOIN users u ON a.user_id = u.id
    WHERE u.email = $1"
   |> based.new_query
-  |> based.with_values([based.string(email.val)])
+  |> based.with_values([based.string(string.lowercase(email.val))])
   |> based.all(db, archive_decoder)
   |> result.map(fn(r) { r.rows })
   |> result.map_error(DbError)
@@ -49,7 +50,7 @@ pub fn insert(item: ArchivedItem, email: Email, db: DB) -> Result(Nil, Error) {
     based.string(formatters.format_date(item.date)),
     based.string(formatters.format_date(item.action_date)),
     based.string(encode_archive_action(item.action)),
-    based.string(email.val),
+    based.string(string.lowercase(email.val)),
   ])
   |> based.execute(db)
   |> result.map_error(DbError)

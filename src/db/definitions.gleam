@@ -3,6 +3,7 @@ import gleam/dynamic.{type DecodeErrors, type Dynamic}
 import gleam/list
 import gleam/option
 import gleam/result
+import gleam/string
 import types/definition.{type Definition, Definition}
 import types/error.{type Error, DbError, NotFoundError}
 import types/id.{type Id}
@@ -22,7 +23,7 @@ pub fn get_all(email: Email, db: DB) -> Result(List(Definition), Error) {
    JOIN users u ON d.user_id = u.id
    WHERE u.email = $1;"
   |> based.new_query
-  |> based.with_values([based.string(email.val)])
+  |> based.with_values([based.string(string.lowercase(email.val))])
   |> based.all(db, definition_decoder)
   |> result.map(fn(r) { r.rows })
   |> result.map_error(DbError)
@@ -90,7 +91,7 @@ pub fn upsert_definition(
       |> option.unwrap(based.null()),
     based.bool(definition.is_automatic_withdrawal),
     based.string(id.unwrap(definition.id)),
-    based.string(email.val),
+    based.string(string.lowercase(email.val)),
   ])
   |> based.execute(db)
   |> result.map_error(DbError)
