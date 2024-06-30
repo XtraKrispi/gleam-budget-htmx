@@ -7,7 +7,6 @@ import db/archive as archive_db
 import db/definitions as definition_db
 import db/users as users_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{Some}
 import gleam/result
@@ -102,9 +101,7 @@ pub fn home_content(user: User, scratch: Scratch, db: DB) {
       |> my_list.singleton
       |> to_response(200)
     }
-    e1, e2 -> {
-      io.debug(e1)
-      io.debug(e2)
+    _e1, _e2 -> {
       error_toast(
         "There was an issue fetching items, please refresh and try again.",
       )
