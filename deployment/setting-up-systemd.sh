@@ -23,3 +23,9 @@ sudo systemctl start budget
 # Can disable:
 # sudo systemctl disable budget
 
+# https://serverfault.com/questions/413397/how-to-set-environment-variable-in-systemd-service
+# systemctl edit budget
+# Modify the Environment section to include PATH and BUDGET_SECRET_KEY separately!
+#[Service]
+#Environment="PATH=PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+#Environment="BUDGET_SECRET_KEY=whatever_you_want"]
