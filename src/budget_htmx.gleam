@@ -2,17 +2,20 @@ import app/router
 import app/web.{Context}
 import based
 import based_sqlite
+import dot_env
+import dot_env/env
 import gleam/erlang/process
 import gleam/io
 import gleam/result
+import gleam/string
 import mist
 import radiate
 import wisp
 
 pub fn main() {
-  //TODO: Only have this run when local... ENV variable?
-  let _ = case 1 == 0 {
-    False ->
+  dot_env.load_default()
+  let _ = case env.get("BUDGET_ENVIRONMENT") |> result.map(string.lowercase) {
+    Ok("dev") ->
       radiate.new()
       |> radiate.add_dir(".")
       |> radiate.on_reload(fn(_state, path) {
@@ -21,7 +24,7 @@ pub fn main() {
       |> radiate.start()
       |> result.replace(Nil)
       |> result.replace_error(Nil)
-    True -> Ok(Nil)
+    _ -> Ok(Nil)
   }
 
   use db <- based.register(based_sqlite.adapter("budget.db"))
@@ -53,7 +56,8 @@ pub fn main() {
 
   wisp.configure_logger()
   // This should be an ENV variable as well
-  let secret_key_base = wisp.random_string(64)
+  let secret_key_base =
+    env.get("BUDGET_SECRET_KEY") |> result.unwrap(wisp.random_string(64))
 
   // A context is constructed holding the static directory path and database
   let ctx = Context(static_directory: static_directory(), db: db)
