@@ -27,7 +27,9 @@ pub fn main() {
     _ -> Ok(Nil)
   }
 
-  use db <- based.register(based_sqlite.adapter("budget.db"))
+  use db <- based.register(based_sqlite.adapter(
+    env.get("BUDGET_DB_PATH") |> result.unwrap("budget.db"),
+  ))
 
   let assert Ok(_) =
     "CREATE TABLE IF NOT EXISTS definitions(id INTEGER PRIMARY KEY AUTOINCREMENT, identifier TEXT, description TEXT, amount REAL, frequency TEXT, start_date TEXT, end_date TEXT NULL, is_automatic_withdrawal INTEGER, user_id INTEGER);"
