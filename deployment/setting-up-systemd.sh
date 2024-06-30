@@ -18,6 +18,8 @@ sudo systemctl start budget
 # sudo systemctl status budget
 # Can stop:
 # sudo systemctl stop budget
+# Can kill (works better):
+# sudo systemctl kill budget
 # Can disable:
 # sudo systemctl disable budget
 
