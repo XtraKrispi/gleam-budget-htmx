@@ -52,6 +52,7 @@ pub fn main() {
     |> based.execute(db)
 
   wisp.configure_logger()
+  // This should be an ENV variable as well
   let secret_key_base = wisp.random_string(64)
 
   // A context is constructed holding the static directory path and database
