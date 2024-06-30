@@ -4,18 +4,25 @@ import based
 import based_sqlite
 import gleam/erlang/process
 import gleam/io
+import gleam/result
 import mist
 import radiate
 import wisp
 
 pub fn main() {
-  let _ =
-    radiate.new()
-    |> radiate.add_dir(".")
-    |> radiate.on_reload(fn(_state, path) {
-      io.println("Change in " <> path <> ", reloading!")
-    })
-    |> radiate.start()
+  //TODO: Only have this run when local... ENV variable?
+  let _ = case 1 == 0 {
+    False ->
+      radiate.new()
+      |> radiate.add_dir(".")
+      |> radiate.on_reload(fn(_state, path) {
+        io.println("Change in " <> path <> ", reloading!")
+      })
+      |> radiate.start()
+      |> result.replace(Nil)
+      |> result.replace_error(Nil)
+    True -> Ok(Nil)
+  }
 
   use db <- based.register(based_sqlite.adapter("budget.db"))
 

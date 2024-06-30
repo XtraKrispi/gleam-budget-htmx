@@ -64,7 +64,7 @@ pub fn upsert_definition(
            ,start_date = $4
            ,end_date = $5
            ,is_automatic_withdrawal = $6
-        WHERE identifier = $7 AND user_id = (SELECT u.id FROM users WHERE email = $8);
+        WHERE identifier = $7 AND user_id = (SELECT u.id FROM users u WHERE u.email = $8);
         ",
       )
     }
