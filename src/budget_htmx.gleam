@@ -55,7 +55,6 @@ pub fn main() {
     |> based.execute(db)
 
   wisp.configure_logger()
-  // This should be an ENV variable as well
   let secret_key_base =
     env.get("BUDGET_SECRET_KEY") |> result.unwrap(wisp.random_string(64))
 
