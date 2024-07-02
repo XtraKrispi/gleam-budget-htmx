@@ -40,7 +40,7 @@ pub fn main() {
     |> based.execute(db)
 
   let assert Ok(_) =
-    "CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT, password_reset_token TEXT);"
+    "CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT);"
     |> based.new_query
     |> based.execute(db)
 
@@ -51,6 +51,16 @@ pub fn main() {
 
   let assert Ok(_) =
     "CREATE TABLE IF NOT EXISTS scratch(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, end_date TEXT, amount_in_bank REAL, amount_left_over REAL);"
+    |> based.new_query
+    |> based.execute(db)
+
+  let assert Ok(_) =
+    "CREATE TABLE password_reset_tokens (    
+    user_id TEXT NOT NULL,    
+    token TEXT NOT NULL UNIQUE,    
+    token_expiry TEXT NOT NULL,    
+    PRIMARY KEY (user_id, token)
+    );"
     |> based.new_query
     |> based.execute(db)
 
