@@ -119,28 +119,24 @@ pub fn insert_reset_token(
 ) -> Result(Nil, error.Error) {
   let results =
     "INSERT INTO password_reset_tokens(user_id, token, token_expiry)
-   SELECT u.id, $1, $2
-   FROM users u
-   WHERE u.email = $3;
-   SELECT changes();"
+     SELECT u.id, $1, $2
+     FROM users u
+     WHERE u.email = $3
+     RETURNING user_id;"
     |> based.new_query
     |> based.with_values([
       based.string(token.token),
       based.string(birl.to_iso8601(token_expiry)),
-      based.string(email.val),
+      based.string(string.lowercase(email.val)),
     ])
-    |> based.one(db, dynamic.element(0, dynamic.int))
+    |> based.all(db, dynamic.element(0, dynamic.string))
+    |> result.map(fn(r) { r.count })
 
   case results {
     Ok(0) -> Error(error.NotFoundError)
     Ok(_) -> Ok(Nil)
     Error(e) -> Error(error.DbError(e))
   }
-  // password_reset_tokens (    
-  //   user_id TEXT NOT NULL,    
-  //   token TEXT NOT NULL UNIQUE,    
-  //   token_expiry TEXT NOT NULL,    
-  //   PRIMARY KEY (user_id, token)
 }
 
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {

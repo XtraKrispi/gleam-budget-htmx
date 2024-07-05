@@ -7,7 +7,9 @@ import db/users as users_db
 import gleam/http.{Get, Post}
 import gleam/list
 import gleam/option.{None}
-import lustre/element
+import gleam/result
+import lustre/attribute
+import lustre/element.{type Element}
 import lustre/element/html
 import page_templates/reset_password
 import types/mail_config.{type MailConfig, MailRecipient}
@@ -33,7 +35,7 @@ pub fn reset_password(
     })
   case req.method, m_token {
     Get, Error(_) -> {
-      reset_password.full_page()
+      reset_password.landing_page()
       |> my_list.singleton
       |> layout.with_page_shell
       |> my_list.singleton
@@ -55,25 +57,48 @@ pub fn reset_password(
           let #(Token(clear_text), t) = reset_token.generate_token()
           let url = base_url <> "/reset_password?token=" <> clear_text
           let expiry = birl.now() |> birl.add(duration.minutes(10))
+          let _results = {
+            use _ <- result.try(users_db.insert_reset_token(
+              email,
+              t,
+              expiry,
+              db,
+            ))
+            use _ <- result.try(mail.send_mail(
+              config,
+              [MailRecipient(mail_config.EmailAddress(email.val), None)],
+              "Budget - Reset Password",
+              element.to_string(reset_password_email(url)),
+            ))
 
-          case Ok(Nil) {
-            //users_db.insert_reset_token(email, t, expiry, db) {
-            Ok(_) -> {
-              let _ =
-                mail.send_mail(
-                  config,
-                  [MailRecipient(mail_config.EmailAddress(email.val), None)],
-                  "Test",
-                  element.to_string(html.div([], [html.text("This is a test")])),
-                )
-              wisp.no_content()
-            }
-            Error(_) -> {
-              wisp.internal_server_error()
-            }
+            Ok(Nil)
           }
+
+          layout.add_toast(
+            html.span([], [
+              html.text(
+                "If you have an account with Budget, please check your email for a password reset link.",
+              ),
+            ]),
+            layout.Success,
+          )
+          |> my_list.singleton
+          |> to_response(200)
+          |> wisp.set_header("HX-Reswap", "none")
         }
-        Error(_) -> wisp.bad_request()
+
+        Error(_) ->
+          layout.add_toast(
+            html.span([], [
+              html.text(
+                "There was an issue reading the email address, please try again.",
+              ),
+            ]),
+            layout.Error,
+          )
+          |> my_list.singleton
+          |> to_response(200)
+          |> wisp.set_header("HX-Reswap", "none")
       }
     }
     Get, Ok(token) -> {
@@ -86,4 +111,15 @@ pub fn reset_password(
     }
     _, _ -> wisp.bad_request()
   }
+}
+
+fn reset_password_email(url: String) -> Element(a) {
+  html.div([], [
+    html.h1([], [html.text("Budget - Reset Password")]),
+    html.p([], [
+      html.text("Please click the link below to reset your password."),
+    ]),
+    html.p([], [html.text("The link will expire in 10 minutes.")]),
+    html.p([], [html.a([attribute.href(url)], [html.text("Click here")])]),
+  ])
 }

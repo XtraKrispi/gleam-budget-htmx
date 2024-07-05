@@ -130,6 +130,9 @@ pub fn main() {
         |> mist.port(8000)
         |> mist.start_http
 
+      // TODO: Create a running process here that will clean up the tokens and sessions tables
+      // Use https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html#start and https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html#sleep
+
       process.sleep_forever()
     }
     Error(envs) -> {
