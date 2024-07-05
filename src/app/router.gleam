@@ -4,6 +4,7 @@ import app/handlers/definitions.{definition, definitions_page} as _definitions_h
 import app/handlers/home.{home_page}
 import app/handlers/login.{login_page}
 import app/handlers/register.{register}
+import app/handlers/reset_password.{reset_password}
 import app/web.{type Context}
 import based.{type DB}
 import birl
@@ -103,6 +104,8 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
       requires_auth(req, ctx.db, archive(req, _, ctx.db, Paid))
     ["toast", "clear"] -> html.text("") |> my_list.singleton |> to_response(200)
     ["register"] -> register(req, ctx.db)
+    ["reset_password"] ->
+      reset_password(req, ctx.db, ctx.mail_config, ctx.base_url)
     ["session"] ->
       requires_auth(req, ctx.db, fn(_user) { destroy_session(req, ctx.db) })
     _ -> wisp.not_found()
@@ -111,7 +114,6 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
 
 fn destroy_session(req, db) {
   use <- wisp.require_method(req, http.Delete)
-
   case wisp.get_cookie(req, "AUTH_COOKIE", wisp.Signed) {
     Ok(val) -> {
       let _ = sessions_db.destroy_session(SessionId(val), db)

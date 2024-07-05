@@ -5,6 +5,9 @@ import gleam/string
 import gleam/string_builder.{type StringBuilder}
 import types/definition.{type Frequency, BiWeekly, Monthly, OneTime}
 
+@external(erlang, "erlang", "display")
+pub fn raw_display(term: a) -> b
+
 fn split_thousands(data: Int, separator: String, accum: StringBuilder) {
   let divided = data / 1000
   case divided == 0 {

@@ -12,6 +12,7 @@ import types/user.{type Email, type User, Email, User}
 import utils/decoders
 import utils/formatters
 import utils/password
+import utils/reset_token.{type Hashed, type Token}
 
 pub fn get_all(db: DB) {
   "SELECT email, password_hash, name
@@ -108,6 +109,38 @@ pub fn save_user_scratch(email: Email, scratch: Scratch, db: DB) {
     io.debug(e)
     error.DbError(e)
   })
+}
+
+pub fn insert_reset_token(
+  email: Email,
+  token: Token(Hashed),
+  token_expiry: Time,
+  db: DB,
+) -> Result(Nil, error.Error) {
+  let results =
+    "INSERT INTO password_reset_tokens(user_id, token, token_expiry)
+   SELECT u.id, $1, $2
+   FROM users u
+   WHERE u.email = $3;
+   SELECT changes();"
+    |> based.new_query
+    |> based.with_values([
+      based.string(token.token),
+      based.string(birl.to_iso8601(token_expiry)),
+      based.string(email.val),
+    ])
+    |> based.one(db, dynamic.element(0, dynamic.int))
+
+  case results {
+    Ok(0) -> Error(error.NotFoundError)
+    Ok(_) -> Ok(Nil)
+    Error(e) -> Error(error.DbError(e))
+  }
+  // password_reset_tokens (    
+  //   user_id TEXT NOT NULL,    
+  //   token TEXT NOT NULL UNIQUE,    
+  //   token_expiry TEXT NOT NULL,    
+  //   PRIMARY KEY (user_id, token)
 }
 
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {

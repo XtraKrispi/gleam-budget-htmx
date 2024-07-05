@@ -1,8 +1,14 @@
 import based.{type DB}
+import types/mail_config.{type MailConfig}
 import wisp.{type Request, type Response}
 
 pub type Context {
-  Context(static_directory: String, db: DB)
+  Context(
+    static_directory: String,
+    db: DB,
+    mail_config: MailConfig,
+    base_url: String,
+  )
 }
 
 pub fn middleware(
