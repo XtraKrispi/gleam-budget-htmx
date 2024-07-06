@@ -4,4 +4,5 @@ pub type Error {
   DbError(error: BasedError)
   NotFoundError
   SessionError
+  InvalidTokenError
 }
