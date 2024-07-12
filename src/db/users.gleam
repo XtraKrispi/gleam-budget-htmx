@@ -11,7 +11,7 @@ import types/session
 import types/user.{type Email, type User, Email, User}
 import utils/decoders
 import utils/formatters
-import utils/password
+import utils/password.{type Password}
 import utils/reset_token.{type Hashed, type Token}
 
 pub fn get_all(db: DB) {
@@ -45,6 +45,20 @@ pub fn insert_user(user: User, db: DB) {
   |> based.execute(db)
   |> result.map_error(error.DbError)
   |> result.replace(Nil)
+}
+
+pub fn update_user_password(email: Email, password: Password, db: DB) {
+  "UPDATE users 
+  SET password_hash = $1
+  WHERE email = $2;"
+  |> based.new_query
+  |> based.with_values([
+    based.string(password.unwrap_password(password)),
+    based.string(email.val),
+  ])
+  |> based.execute(db)
+  |> result.replace(Nil)
+  |> result.replace_error(error.DbError)
 }
 
 pub fn get_user_for_session(

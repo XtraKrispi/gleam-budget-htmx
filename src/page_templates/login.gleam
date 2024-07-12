@@ -89,9 +89,12 @@ pub fn full_page() {
                         attribute.name("password"),
                         attribute.required(True),
                       ]),
-                      html.label([attribute.class("label")], [
+                      html.label([attribute.class("label"), hx.boost(True)], [
                         html.a(
-                          [attribute.class("label-text-alt link link-hover")],
+                          [
+                            attribute.class("label-text-alt link link-hover"),
+                            attribute.href("/reset_password"),
+                          ],
                           [html.text("Forgot password?")],
                         ),
                       ]),
