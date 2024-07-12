@@ -1,10 +1,8 @@
 import based.{type DB}
 import birl.{type Time}
-import birl/duration
 import gleam/dynamic.{type DecodeErrors, type Dynamic}
 import gleam/io
 import gleam/option.{type Option, None, Some}
-import gleam/order
 import gleam/result
 import gleam/string
 import types/error
@@ -142,35 +140,33 @@ pub fn insert_reset_token(
 }
 
 pub fn get_user_for_reset_password(hashed_token: Token(Hashed), db: DB) {
-  let password_token_found =
-    "SELECT u.email, u.password_hash, u.name, prt.token_expiry
+  "SELECT u.email, u.password_hash, u.name, prt.token_expiry
    FROM password_reset_tokens prt
    JOIN users u ON prt.user_id = u.id
    WHERE token = $1;"
-    |> based.new_query
-    |> based.with_values([reset_token.to_based(hashed_token)])
-    |> based.one(
-      db,
-      dynamic.decode2(
-        fn(a, b) { #(a, b) },
-        dynamic.element(0, user_decoder),
-        dynamic.element(1, decoders.time_decoder),
-      ),
-    )
-  case password_token_found {
-    Ok(#(user, expiry)) -> {
-      case
-        duration.compare(
-          birl.difference(birl.now(), expiry),
-          duration.minutes(10),
-        )
-      {
-        order.Lt | order.Eq -> Ok(user)
-        _ -> Error(error.InvalidTokenError)
-      }
-    }
-    Error(_e) -> Error(error.InvalidTokenError)
-  }
+  |> based.new_query
+  |> based.with_values([reset_token.to_based(hashed_token)])
+  |> based.one(
+    db,
+    dynamic.decode2(
+      fn(a, b) { #(a, b) },
+      dynamic.element(0, user_decoder),
+      dynamic.element(1, decoders.time_decoder),
+    ),
+  )
+}
+
+pub fn remove_all_user_tokens(email: Email, db: DB) {
+  "DELETE FROM password_reset_tokens
+  WHERE user_id IN 
+    (SELECT id 
+     FROM users 
+     WHERE email = $1);"
+  |> based.new_query
+  |> based.with_values([based.string(string.lowercase(email.val))])
+  |> based.execute(db)
+  |> result.replace(Nil)
+  |> result.replace_error(error.DbError)
 }
 
 fn user_decoder(dyn: Dynamic) -> Result(User, DecodeErrors) {

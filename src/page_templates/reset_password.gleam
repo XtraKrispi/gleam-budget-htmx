@@ -1,3 +1,4 @@
+import gleam/option
 import lustre/attribute
 import lustre/element/html
 import lustre_hx as hx
@@ -114,7 +115,7 @@ pub fn invalid_token_page() {
   )
 }
 
-pub fn reset_page() {
+pub fn token_page() {
   html.div(
     [
       attribute.class(
@@ -128,7 +129,7 @@ pub fn reset_page() {
             html.text("Reset Password"),
           ]),
           html.p([attribute.class("py-6")], [
-            html.text("Please enter the email you signed up with"),
+            html.text("Please enter your new password"),
           ]),
         ]),
         html.div(
@@ -139,20 +140,39 @@ pub fn reset_page() {
           ],
           [
             html.form(
-              [attribute.class("card-body"), hx.post("/reset_password")],
+              [
+                attribute.class("card-body"),
+                hx.post("/reset_password"),
+                hx.swap(hx.OuterHTML, option.None),
+              ],
               [
                 html.div([attribute.class("form-control")], [
                   html.label([attribute.class("label")], [
                     html.span([attribute.class("label-text")], [
-                      html.text("Email"),
+                      html.text("Password"),
                     ]),
                   ]),
                   html.input([
-                    attribute.type_("email"),
-                    attribute.placeholder("email"),
+                    attribute.type_("password"),
+                    attribute.placeholder("password"),
                     attribute.class("input input-bordered"),
                     attribute.required(True),
-                    attribute.name("email"),
+                    attribute.name("password"),
+                    attribute.attribute("hx-validate", "true"),
+                  ]),
+                ]),
+                html.div([attribute.class("form-control")], [
+                  html.label([attribute.class("label")], [
+                    html.span([attribute.class("label-text")], [
+                      html.text("Confirm Password"),
+                    ]),
+                  ]),
+                  html.input([
+                    attribute.type_("password"),
+                    attribute.placeholder("password"),
+                    attribute.class("input input-bordered"),
+                    attribute.required(True),
+                    attribute.name("password_confirmation"),
                     attribute.attribute("hx-validate", "true"),
                   ]),
                 ]),
@@ -165,6 +185,28 @@ pub fn reset_page() {
             ),
           ],
         ),
+      ]),
+    ],
+  )
+}
+
+pub fn error_page() {
+  html.div(
+    [
+      attribute.class(
+        "bg-base-200 hero min-h-screen min-w-screen flex flex-col justify-center",
+      ),
+    ],
+    [
+      html.div([attribute.class("hero-content flex-col lg:flex-row-reverse")], [
+        html.div([attribute.class("text-center lg:text-left")], [
+          html.h1([attribute.class("text-5xl font-bold")], [
+            html.text("Reset Password"),
+          ]),
+          html.p([attribute.class("py-6")], [
+            html.text("Something went wrong. Please try again."),
+          ]),
+        ]),
       ]),
     ],
   )

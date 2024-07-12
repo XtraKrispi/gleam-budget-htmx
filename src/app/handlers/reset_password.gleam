@@ -7,6 +7,7 @@ import db/users as users_db
 import gleam/http.{Get, Post}
 import gleam/list
 import gleam/option.{None}
+import gleam/order
 import gleam/result
 import lustre/attribute
 import lustre/element.{type Element}
@@ -122,13 +123,83 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
       case
         users_db.get_user_for_reset_password(reset_token.hash_token(token), db)
       {
-        Ok(user) -> todo
-        Error(_e) -> todo
+        Ok(#(_user, expiry)) ->
+          case birl.compare(birl.now(), expiry) {
+            order.Lt | order.Eq ->
+              // We're good, let them change their password
+              reset_password.token_page()
+              |> my_list.singleton
+              |> to_response(200)
+            _ ->
+              // Generic error page
+              reset_password.error_page()
+              |> my_list.singleton
+              |> to_response(200)
+          }
+
+        Error(_e) ->
+          // Generic error page
+          reset_password.error_page()
+          |> my_list.singleton
+          |> to_response(200)
       }
     }
     Post -> {
+      use form_data <- wisp.require_form(req)
+      let passwords = {
+        use pass <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "password" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          }),
+        )
+        use pass_confirm <- result.try(
+          form_data.values
+          |> list.find_map(fn(kvp) {
+            case kvp.0 {
+              "password_confirmation" -> Ok(kvp.1)
+              _ -> Error(Nil)
+            }
+          }),
+        )
+
+        Ok(#(pass, pass_confirm))
+      }
       // Update password, after verifying password and token
-      todo
+      // revalidating the token ... is this correct?
+      case
+        users_db.get_user_for_reset_password(reset_token.hash_token(token), db)
+      {
+        Ok(#(user, expiry)) ->
+          case birl.compare(birl.now(), expiry) {
+            order.Lt | order.Eq ->
+              // Token's good, reset their password AND remove all tokens for the user
+              todo
+            _ ->
+              // Generic error page
+              layout.add_toast(
+                html.span([], [
+                  html.text("Something went wrong, please try again."),
+                ]),
+                layout.Error,
+              )
+              |> my_list.singleton
+              |> to_response(200)
+              |> wisp.set_header("HX-Reswap", "none")
+          }
+        Error(_) ->
+          // Generic error page
+          layout.add_toast(
+            html.span([], [html.text("Something went wrong, please try again.")]),
+            layout.Error,
+          )
+          |> my_list.singleton
+          |> to_response(200)
+          |> wisp.set_header("HX-Reswap", "none")
+      }
     }
     _ -> wisp.bad_request()
   }
