@@ -5,10 +5,11 @@ import birl
 import birl/duration
 import db/users as users_db
 import gleam/http.{Get, Post}
+import gleam/io
 import gleam/list
 import gleam/option.{None}
-import gleam/order
 import gleam/result
+import logic/password_reset
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
@@ -121,31 +122,39 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
   case req.method {
     Get -> {
       // Display reset password page with password form (after verifying token)
-      case
-        users_db.get_user_for_reset_password(reset_token.hash_token(token), db)
-      {
-        Ok(#(_user, expiry)) ->
-          case birl.compare(birl.now(), expiry) {
-            order.Lt | order.Eq ->
-              // We're good, let them change their password
-              reset_password.token_page()
-              |> my_list.singleton
-              |> to_response(200)
-            _ ->
-              // Generic error page
+      case users_db.get_users_for_reset_password(db) {
+        Ok(all_users) -> {
+          case password_reset.get_user(token, all_users, birl.now()) {
+            Error(_err) -> {
               reset_password.error_page()
               |> my_list.singleton
+              |> layout.with_page_shell
+              |> my_list.singleton
               |> to_response(200)
+            }
+            Ok(_user) -> {
+              // We're good, let them change their password
+              reset_password.token_page(token)
+              |> my_list.singleton
+              |> layout.with_page_shell
+              |> my_list.singleton
+              |> to_response(200)
+            }
           }
+        }
 
-        Error(_e) ->
+        Error(e) -> {
           // Generic error page
           reset_password.error_page()
           |> my_list.singleton
+          |> layout.with_page_shell
+          |> my_list.singleton
           |> to_response(200)
+        }
       }
     }
     Post -> {
+      io.debug("here")
       use form_data <- wisp.require_form(req)
       let password = {
         use pass <- result.try(
@@ -172,6 +181,9 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
           False -> Error(Nil)
         }
       }
+
+      io.debug(password)
+
       // Password validation
       case password {
         Error(_) ->
@@ -185,15 +197,21 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
         Ok(pass) -> {
           // Update password, after verifying password and token
           // revalidating the token ... is this correct?
-          case
-            users_db.get_user_for_reset_password(
-              reset_token.hash_token(token),
-              db,
-            )
-          {
-            Ok(#(user, expiry)) ->
-              case birl.compare(birl.now(), expiry) {
-                order.Lt | order.Eq -> {
+          case users_db.get_users_for_reset_password(db) {
+            Ok(users) ->
+              case password_reset.get_user(token, users, birl.now()) {
+                Error(_err) -> {
+                  layout.add_toast(
+                    html.span([], [
+                      html.text("Something went wrong, please try again."),
+                    ]),
+                    layout.Error,
+                  )
+                  |> my_list.singleton
+                  |> to_response(200)
+                  |> wisp.set_header("HX-Reswap", "none")
+                }
+                Ok(user) -> {
                   // Token's good, reset their password AND remove all tokens for the user
                   let new_password = password.create_password(pass)
                   case
@@ -213,7 +231,6 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
                       |> to_response(200)
                       |> wisp.set_header("HX-Redirect", "/login")
                     _, _ ->
-                      // Generic error page
                       layout.add_toast(
                         html.span([], [
                           html.text("Something went wrong, please try again."),
@@ -225,20 +242,8 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
                       |> wisp.set_header("HX-Reswap", "none")
                   }
                 }
-                _ ->
-                  // Generic error page
-                  layout.add_toast(
-                    html.span([], [
-                      html.text("Something went wrong, please try again."),
-                    ]),
-                    layout.Error,
-                  )
-                  |> my_list.singleton
-                  |> to_response(200)
-                  |> wisp.set_header("HX-Reswap", "none")
               }
             Error(_) ->
-              // Generic error page
               layout.add_toast(
                 html.span([], [
                   html.text("Something went wrong, please try again."),

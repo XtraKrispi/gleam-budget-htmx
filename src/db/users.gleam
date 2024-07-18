@@ -34,8 +34,8 @@ pub fn get_by_email(email: Email, db: DB) {
 }
 
 pub fn insert_user(user: User, db: DB) {
-  "INSERT INTO users(email, name, password_hash, password_reset_token)
-    VALUES($1, $2, $3, null)"
+  "INSERT INTO users(email, name, password_hash)
+    VALUES($1, $2, $3)"
   |> based.new_query
   |> based.with_values([
     based.string(string.lowercase(user.email.val)),
@@ -145,7 +145,6 @@ pub fn insert_reset_token(
     ])
     |> based.all(db, dynamic.element(0, dynamic.string))
     |> result.map(fn(r) { r.count })
-
   case results {
     Ok(0) -> Error(error.NotFoundError)
     Ok(_) -> Ok(Nil)
@@ -153,21 +152,22 @@ pub fn insert_reset_token(
   }
 }
 
-pub fn get_user_for_reset_password(hashed_token: Token(Hashed), db: DB) {
-  "SELECT u.email, u.password_hash, u.name, prt.token_expiry
+pub fn get_users_for_reset_password(db: DB) {
+  "SELECT u.email, u.password_hash, u.name, prt.token_expiry, prt.token
    FROM password_reset_tokens prt
-   JOIN users u ON prt.user_id = u.id
-   WHERE token = $1;"
+   JOIN users u ON prt.user_id = u.id;"
   |> based.new_query
-  |> based.with_values([reset_token.to_based(hashed_token)])
-  |> based.one(
+  |> based.all(
     db,
-    dynamic.decode2(
-      fn(a, b) { #(a, b) },
-      dynamic.element(0, user_decoder),
-      dynamic.element(1, decoders.time_decoder),
+    dynamic.decode3(
+      fn(a, b, c) { #(a, b, c) },
+      user_decoder,
+      dynamic.element(3, decoders.time_decoder),
+      dynamic.element(4, reset_token.token_decoder),
     ),
   )
+  |> result.map(fn(r) { r.rows })
+  |> result.map_error(error.DbError)
 }
 
 pub fn remove_all_user_tokens(email: Email, db: DB) {

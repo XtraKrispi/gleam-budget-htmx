@@ -27,7 +27,7 @@ pub type Option(a) {
   SslOptions(a)
 }
 
-@external(erlang, "gen_smtp_client", "send_blocking")
+@external(erlang, "gen_smtp_client", "send")
 fn send(email: Email, options: List(Option(a))) -> Result(a, b)
 
 @external(erlang, "tls_certificate_check", "options")

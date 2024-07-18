@@ -1,6 +1,8 @@
 import antigone
 import based.{type Value}
 import gleam/bit_array
+import gleam/dynamic.{type DecodeErrors, type Dynamic}
+import utils/hash
 import wisp
 
 pub opaque type Token(a) {
@@ -30,10 +32,18 @@ pub fn hash_token(token: Token(ClearText)) -> Token(Hashed) {
   Token(hashed)
 }
 
+pub fn verify_token(token: Token(ClearText), hashed: Token(Hashed)) {
+  hash.verify(token.token, hashed.token)
+}
+
 pub fn generate_token() -> #(Token(ClearText), Token(Hashed)) {
   let token_str = wisp.random_string(64)
   let bits = bit_array.from_string(token_str)
 
   let hashed = antigone.hash(antigone.hasher(), bits)
   #(Token(token_str), Token(hashed))
+}
+
+pub fn token_decoder(dyn: Dynamic) -> Result(Token(Hashed), DecodeErrors) {
+  dynamic.decode1(Token, dynamic.string)(dyn)
 }

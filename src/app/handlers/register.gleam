@@ -3,6 +3,7 @@ import app/layout
 import based.{type DB}
 import db/users as users_db
 import gleam/http
+import gleam/io
 import gleam/list
 import gleam/regex
 import gleam/result
@@ -108,7 +109,8 @@ pub fn register(req: Request, db: DB) {
                   |> to_response(200)
                   |> wisp.set_header("HX-Trigger", "hideRegistrationModal")
 
-                Error(_) -> {
+                Error(e) -> {
+                  io.debug(e)
                   [
                     layout.add_toast(
                       html.span([], [

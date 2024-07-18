@@ -2,6 +2,7 @@ import gleam/option
 import lustre/attribute
 import lustre/element/html
 import lustre_hx as hx
+import utils/reset_token.{type ClearText, type Token}
 
 pub fn landing_page() {
   html.div(
@@ -115,7 +116,7 @@ pub fn invalid_token_page() {
   )
 }
 
-pub fn token_page() {
+pub fn token_page(token: Token(ClearText)) {
   html.div(
     [
       attribute.class(
@@ -142,7 +143,9 @@ pub fn token_page() {
             html.form(
               [
                 attribute.class("card-body"),
-                hx.post("/reset_password"),
+                hx.post(
+                  "/reset_password?token=" <> reset_token.to_string(token),
+                ),
                 hx.swap(hx.OuterHTML, option.None),
               ],
               [
