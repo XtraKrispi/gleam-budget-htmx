@@ -5,7 +5,6 @@ import birl
 import birl/duration
 import db/users as users_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{None}
 import gleam/result
@@ -143,7 +142,7 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
           }
         }
 
-        Error(e) -> {
+        Error(_e) -> {
           // Generic error page
           reset_password.error_page()
           |> my_list.singleton
@@ -154,7 +153,6 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
       }
     }
     Post -> {
-      io.debug("here")
       use form_data <- wisp.require_form(req)
       let password = {
         use pass <- result.try(
@@ -181,8 +179,6 @@ fn token_page(req: Request, db: DB, token: Token(ClearText)) {
           False -> Error(Nil)
         }
       }
-
-      io.debug(password)
 
       // Password validation
       case password {

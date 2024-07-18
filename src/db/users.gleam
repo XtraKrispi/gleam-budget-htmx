@@ -1,7 +1,6 @@
 import based.{type DB}
 import birl.{type Time}
 import gleam/dynamic.{type DecodeErrors, type Dynamic}
-import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
@@ -119,10 +118,7 @@ pub fn save_user_scratch(email: Email, scratch: Scratch, db: DB) {
   ])
   |> based.execute(db)
   |> result.replace(Nil)
-  |> result.map_error(fn(e) {
-    io.debug(e)
-    error.DbError(e)
-  })
+  |> result.map_error(error.DbError)
 }
 
 pub fn insert_reset_token(

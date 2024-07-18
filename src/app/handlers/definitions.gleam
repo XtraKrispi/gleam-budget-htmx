@@ -4,7 +4,6 @@ import based.{type DB}
 import birl
 import db/definitions as definition_db
 import gleam/http.{Get, Post}
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -88,8 +87,7 @@ pub fn definition(
             Ok(_) ->
               wisp.no_content()
               |> wisp.set_header("HX-Trigger", "hideDefinitionsModal, reload")
-            Error(e) -> {
-              io.debug(e)
+            Error(_e) -> {
               error_toast(
                 "There was an issue saving the definition, please try again.",
               )
