@@ -60,9 +60,20 @@ fn render_item(item: Item) {
       html.div([attribute.class("card-body")], [
         html.h2([attribute.class("card-title flex justify-between")], [
           html.span([], [html.text(item.description)]),
-          html.span([], [
-            html.text("$" <> formatters.format_float(item.amount, 2, Some(","))),
-          ]),
+          html.span(
+            [
+              hx.hyper_script(
+                "on click writeText('"
+                <> formatters.format_float(item.amount, 2, None)
+                <> "') on navigator.clipboard",
+              ),
+            ],
+            [
+              html.text(
+                "$" <> formatters.format_float(item.amount, 2, Some(",")),
+              ),
+            ],
+          ),
         ]),
         html.p([], [html.text(formatters.format_date(item.date))]),
         html.div([attribute.class("flex justify-between items-center")], [
