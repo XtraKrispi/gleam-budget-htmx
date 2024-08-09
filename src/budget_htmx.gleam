@@ -20,7 +20,7 @@ import wisp
 
 fn hydrate_mail_config() -> Result(MailConfig, List(String)) {
   let get_env_value = fn(val: String) {
-    env.get(val) |> result.replace_error(val)
+    env.get_string(val) |> result.replace_error(val)
   }
   let relay = get_env_value("BUDGET_SMTP_RELAY")
   let hostname = get_env_value("BUDGET_SMTP_HOSTNAME")
@@ -56,7 +56,7 @@ fn hydrate_mail_config() -> Result(MailConfig, List(String)) {
 pub fn main() {
   dot_env.load_default()
   let _ = case
-    env.get("BUDGET_ENVIRONMENT")
+    env.get_string("BUDGET_ENVIRONMENT")
     |> result.map(string.lowercase)
   {
     Ok("dev") ->
@@ -112,7 +112,8 @@ pub fn main() {
 
       wisp.configure_logger()
       let secret_key_base =
-        env.get("BUDGET_SECRET_KEY") |> result.unwrap(wisp.random_string(64))
+        env.get_string("BUDGET_SECRET_KEY")
+        |> result.unwrap(wisp.random_string(64))
 
       // A context is constructed holding the static directory path and database
       let ctx =
@@ -120,7 +121,7 @@ pub fn main() {
           static_directory: static_directory(),
           db: db,
           mail_config: config,
-          base_url: env.get("BUDGET_BASE_URL")
+          base_url: env.get_string("BUDGET_BASE_URL")
             |> result.unwrap("http://localhost:8000"),
         )
 
