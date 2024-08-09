@@ -62,6 +62,7 @@ fn render_item(item: Item) {
           html.span([], [html.text(item.description)]),
           html.span(
             [
+              attribute.class("cursor-pointer"),
               hx.hyper_script(
                 "on click writeText('"
                 <> formatters.format_float(item.amount, 2, None)
